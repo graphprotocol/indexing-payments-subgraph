@@ -1,34 +1,54 @@
-<h1 align="center">Indexing Payments Subgraph</h1>
+<h1 align="center">
+  <br>
+  Indexing Payments Subgraph
+  <br>
+</h1>
+
+<h4 align="center">On-chain event indexer for the indexing agreement lifecycle in <a href="https://thegraph.com">The Graph</a> protocol.</h4>
 
 <p align="center">
   <a href="https://github.com/graphprotocol/indexing-payments-subgraph/actions"><img src="https://github.com/graphprotocol/indexing-payments-subgraph/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
   <a href="https://thegraph.com"><img src="https://img.shields.io/badge/The_Graph-protocol-6747ED.svg" alt="The Graph"></a>
-</p>
-
-<p align="center">
-  On-chain event indexer for the indexing agreement lifecycle<br>
-  in <a href="https://thegraph.com">The Graph</a> protocol.
+  <a href="https://thegraph.com/docs"><img src="https://img.shields.io/badge/docs-subgraph-6747ED.svg?logo=data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMTIgMkw0IDdWMTdMMTIgMjJMMjAgMTdWN0wxMiAyWiIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIi8+PC9zdmc+" alt="Docs"></a>
 </p>
 
 <br>
 
-## Overview
+## What It Does
 
-This subgraph indexes the full lifecycle of indexing agreements from the [SubgraphService](https://github.com/graphprotocol/contracts/tree/main/packages/subgraph-service) contract. Events are emitted through the `IndexingAgreement` library when indexers accept, update, or cancel agreements, and when fees are collected.
+This subgraph tracks the full lifecycle of [Direct Indexing Payments](https://github.com/graphprotocol/contracts/tree/main/packages/subgraph-service) (DIPs) agreements on-chain. It indexes events emitted by the `SubgraphService` contract through the `IndexingAgreement` library and exposes them via a GraphQL API that downstream services can query.
 
-The primary consumer is [dipper](https://github.com/edgeandnode/dipper)'s chain listener, which uses acceptance and cancellation events to keep its internal agreement state in sync with what has been confirmed on-chain.
+[Dipper](https://github.com/edgeandnode/dipper) is the primary consumer -- its chain listener polls this subgraph to detect when indexers accept or cancel agreements, keeping its internal state in sync with on-chain reality without direct RPC polling.
 
 <br>
 
-## Indexed Events
+## Events
 
-| | Event | Emitted when |
-|---|---|---|
-| **>>** | `IndexingAgreementAccepted` | An indexer accepts an RCA on-chain, creating an allocation |
-| **<<** | `IndexingAgreementCanceled` | An agreement is canceled by payer or indexer |
-| **~>** | `IndexingAgreementUpdated` | Agreement terms or allocation are changed |
-| **$$** | `IndexingFeesCollectedV1` | Fees are collected against an active agreement |
+<table>
+<tr><td width="300"><code>IndexingAgreementAccepted</code></td><td>Indexer accepts an RCA on-chain, creating an allocation</td></tr>
+<tr><td><code>IndexingAgreementCanceled</code></td><td>Agreement canceled by payer or indexer</td></tr>
+<tr><td><code>IndexingAgreementUpdated</code></td><td>Agreement terms or allocation changed</td></tr>
+<tr><td><code>IndexingFeesCollectedV1</code></td><td>Fees collected against an active agreement</td></tr>
+</table>
+
+<br>
+
+## Architecture
+
+```mermaid
+graph LR
+    A[SubgraphService<br>Contract] -->|emits events| B[graph-node]
+    B -->|indexes| C[GraphQL API]
+    C -->|polls| D[dipper<br>chain_listener]
+    D -->|updates| E[(agreement<br>state)]
+
+    style A fill:#6747ED,stroke:#5438c5,color:#fff
+    style B fill:#1a1a2e,stroke:#333,color:#fff
+    style C fill:#1a1a2e,stroke:#333,color:#fff
+    style D fill:#2d6a4f,stroke:#1b4332,color:#fff
+    style E fill:#2d6a4f,stroke:#1b4332,color:#fff
+```
 
 <br>
 
@@ -36,7 +56,6 @@ The primary consumer is [dipper](https://github.com/edgeandnode/dipper)'s chain 
 
 ```bash
 npm install
-
 npm run prepare:hardhat     # generate manifest from template
 npx graph codegen           # generate AssemblyScript types
 npx graph build             # compile to WASM
@@ -47,19 +66,21 @@ npm test                    # matchstick unit tests (Linux only)
 
 ## Deployment
 
-Each network has a config file in `config/` containing the SubgraphService contract address and start block. Generate the manifest for the target network, then deploy to a graph-node instance:
+Each network has a config file in `config/` with the contract address and start block.
 
 ```bash
+# 1. Generate manifest for target network
 npm run prepare:hardhat
 
+# 2. Create and deploy
 npx graph create --node http://localhost:8020 indexing-payments
 npx graph deploy --node http://localhost:8020 --ipfs http://localhost:5001 \
   --version-label v0.1.0 indexing-payments
 ```
 
+<details>
+<summary><strong>Available networks</strong></summary>
 <br>
-
-## Networks
 
 | Network | Config | SubgraphService Address |
 |:--------|:-------|:------------------------|
@@ -67,22 +88,7 @@ npx graph deploy --node http://localhost:8020 --ipfs http://localhost:5001 \
 | Arbitrum One | [`config/arbitrum-one.json`](config/arbitrum-one.json) | TBD |
 | Arbitrum Sepolia | [`config/arbitrum-sepolia.json`](config/arbitrum-sepolia.json) | TBD |
 
-<br>
-
-## Architecture
-
-```
-SubgraphService contract
-        |
-        |  IndexingAgreement library emits events
-        |
-        v
-  subgraph.yaml ──> graph-node ──> GraphQL API
-                                       |
-                                       v
-                                    dipper
-                                (chain_listener)
-```
+</details>
 
 <br>
 
