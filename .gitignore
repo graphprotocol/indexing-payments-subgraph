@@ -3,4 +3,5 @@ generated/
 node_modules/
 .DS_Store
 tests/.bin
+tests/.latest.json
 subgraph.yaml
