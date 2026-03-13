@@ -6,10 +6,21 @@
     "codegen": "graph codegen",
     "build": "graph codegen && graph build",
     "create-local": "graph create --node http://localhost:8020 indexing-payments",
-    "deploy-local": "graph deploy --node http://localhost:8020 --ipfs http://localhost:5001 --version-label v0.1.0 indexing-payments"
+    "deploy-local": "graph deploy --node http://localhost:8020 --ipfs http://localhost:5001 --version-label v0.1.0 indexing-payments",
+    "prepare:hardhat": "mustache config/hardhat.json subgraph.template.yaml > subgraph.yaml",
+    "prepare:arbitrum-one": "mustache config/arbitrum-one.json subgraph.template.yaml > subgraph.yaml",
+    "prepare:arbitrum-sepolia": "mustache config/arbitrum-sepolia.json subgraph.template.yaml > subgraph.yaml",
+    "format": "prettier --write 'src/**/*.ts' 'tests/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts' 'tests/**/*.ts'",
+    "test": "graph test"
   },
   "dependencies": {
     "@graphprotocol/graph-cli": "0.93.3",
-    "@graphprotocol/graph-ts": "0.35.1"
+    "@graphprotocol/graph-ts": "0.35.1",
+    "mustache": "^4.2.0"
+  },
+  "devDependencies": {
+    "matchstick-as": "^0.6.0",
+    "prettier": "^3.2.0"
   }
 }

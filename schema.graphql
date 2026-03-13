@@ -19,3 +19,32 @@ type IndexingAgreementCanceled @entity(immutable: true) {
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
+
+type IndexingAgreementUpdated @entity(immutable: true) {
+  id: ID!
+  indexer: Bytes!
+  payer: Bytes!
+  agreementId: Bytes!
+  allocationId: Bytes!
+  version: Int!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type IndexingFeesCollected @entity(immutable: true) {
+  id: ID!
+  indexer: Bytes!
+  payer: Bytes!
+  agreementId: Bytes!
+  allocationId: Bytes!
+  subgraphDeploymentId: Bytes!
+  currentEpoch: BigInt!
+  tokensCollected: BigInt!
+  entities: BigInt!
+  poi: Bytes!
+  poiBlockNumber: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
