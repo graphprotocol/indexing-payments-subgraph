@@ -122,8 +122,10 @@ describe('IndexingAgreementAccepted', () => {
       1,
       versionTerms,
     )
-    // Give event2 a different log index so entity IDs differ
-    event2.logIndex = BigInt.fromI32(1)
+    // Give event2 a different tx hash so entity IDs differ
+    event2.transaction.hash = Bytes.fromHexString(
+      '0x1111111111111111111111111111111111111111111111111111111111111111',
+    ) as Bytes
 
     handleIndexingAgreementAccepted(event1)
     handleIndexingAgreementAccepted(event2)
