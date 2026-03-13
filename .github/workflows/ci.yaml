@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Generate manifest
+        run: npm run prepare:hardhat
+
+      - name: Generate types
+        run: npx graph codegen
+
+      - name: Build
+        run: npx graph build
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Test
+        run: npm test

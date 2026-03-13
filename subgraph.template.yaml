@@ -6,11 +6,11 @@ schema:
 dataSources:
   - kind: ethereum
     name: SubgraphService
-    network: hardhat
+    network: {{network}}
     source:
-      address: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+      address: "{{address}}"
       abi: SubgraphService
-      startBlock: 0
+      startBlock: {{startBlock}}
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7

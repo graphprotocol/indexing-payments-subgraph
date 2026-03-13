@@ -1,5 +1,8 @@
-import { IndexingAgreementAccepted as AcceptedEvent, IndexingAgreementCanceled as CanceledEvent } from "../generated/SubgraphService/SubgraphService"
-import { IndexingAgreementAccepted, IndexingAgreementCanceled } from "../generated/schema"
+import {
+  IndexingAgreementAccepted as AcceptedEvent,
+  IndexingAgreementCanceled as CanceledEvent,
+} from '../generated/SubgraphService/SubgraphService'
+import { IndexingAgreementAccepted, IndexingAgreementCanceled } from '../generated/schema'
 
 export function handleIndexingAgreementAccepted(event: AcceptedEvent): void {
   let id = event.transaction.hash.concatI32(event.logIndex.toI32()).toHexString()
