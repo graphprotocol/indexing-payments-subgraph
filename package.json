@@ -1,0 +1,15 @@
+{
+  "name": "indexing-payments-subgraph",
+  "version": "0.1.0",
+  "license": "MIT",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph codegen && graph build",
+    "create-local": "graph create --node http://localhost:8020 indexing-payments",
+    "deploy-local": "graph deploy --node http://localhost:8020 --ipfs http://localhost:5001 --version-label v0.1.0 indexing-payments"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "0.93.3",
+    "@graphprotocol/graph-ts": "0.35.1"
+  }
+}

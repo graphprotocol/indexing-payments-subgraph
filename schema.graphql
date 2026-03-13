@@ -1,0 +1,21 @@
+type IndexingAgreementAccepted @entity(immutable: true) {
+  id: ID!
+  indexer: Bytes!
+  payer: Bytes!
+  agreementId: Bytes!
+  allocationId: Bytes!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type IndexingAgreementCanceled @entity(immutable: true) {
+  id: ID!
+  indexer: Bytes!
+  payer: Bytes!
+  agreementId: Bytes!
+  canceledBy: Bytes!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}

@@ -1,0 +1,29 @@
+specVersion: 1.0.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: SubgraphService
+    network: hardhat
+    source:
+      address: "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9"
+      abi: SubgraphService
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - IndexingAgreementAccepted
+        - IndexingAgreementCanceled
+      abis:
+        - name: SubgraphService
+          file: ./abis/SubgraphService.json
+      eventHandlers:
+        - event: IndexingAgreementAccepted(indexed address,indexed address,indexed bytes16,address,bytes32,uint8,bytes)
+          handler: handleIndexingAgreementAccepted
+        - event: IndexingAgreementCanceled(indexed address,indexed address,indexed bytes16,address)
+          handler: handleIndexingAgreementCanceled
+      file: ./src/mapping.ts
