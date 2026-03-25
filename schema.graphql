@@ -48,3 +48,15 @@ type IndexingFeesCollected @entity(immutable: true) {
   blockTimestamp: BigInt!
   transactionHash: Bytes!
 }
+
+type IndexerDeploymentLatest @entity(immutable: false) {
+  id: ID!
+  indexer: Bytes!
+  subgraphDeploymentId: Bytes!
+  agreementId: Bytes!
+  entities: BigInt!
+  tokensCollected: BigInt!
+  poiBlockNumber: BigInt!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+}
