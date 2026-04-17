@@ -1,5 +1,6 @@
 {
   "network": "arbitrum-one",
-  "address": "0x0000000000000000000000000000000000000000",
+  "subgraphServiceAddress": "0x0000000000000000000000000000000000000000",
+  "recurringCollectorAddress": "0x0000000000000000000000000000000000000000",
   "startBlock": 0
 }
