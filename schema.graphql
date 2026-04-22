@@ -1,44 +1,56 @@
-type IndexingAgreementAccepted @entity(immutable: true) {
-  id: ID!
-  indexer: Bytes!
-  payer: Bytes!
-  agreementId: Bytes!
-  allocationId: Bytes!
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+"Agreement lifecycle state"
+enum AgreementState {
+  "Proposed but not yet accepted (reserved for future use — entities are currently only created on accept)"
+  NotAccepted
+  Accepted
+  CanceledByServiceProvider
+  CanceledByPayer
 }
 
-type IndexingAgreementCanceled @entity(immutable: true) {
-  id: ID!
-  indexer: Bytes!
+type IndexingAgreement @entity(immutable: false) {
+  "The agreement ID (bytes16)"
+  id: Bytes!
+  "The payer address"
   payer: Bytes!
-  agreementId: Bytes!
-  canceledBy: Bytes!
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
-}
-
-type IndexingAgreementUpdated @entity(immutable: true) {
-  id: ID!
+  "The indexer address"
   indexer: Bytes!
-  payer: Bytes!
-  agreementId: Bytes!
+  "The allocation linked to this agreement"
   allocationId: Bytes!
-  version: Int!
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
-}
-
-type IndexingFeesCollected @entity(immutable: true) {
-  id: ID!
-  indexer: Bytes!
-  payer: Bytes!
-  agreementId: Bytes!
-  allocationId: Bytes!
+  "The subgraph deployment ID"
   subgraphDeploymentId: Bytes!
+  "Agreement lifecycle state"
+  state: AgreementState!
+  "Timestamp when the agreement was accepted"
+  acceptedAt: BigInt!
+  "Timestamp of last collection"
+  lastCollectionAt: BigInt!
+  "Timestamp when the agreement ends"
+  endsAt: BigInt!
+  "Maximum tokens for first collection"
+  maxInitialTokens: BigInt!
+  "Maximum tokens per second for ongoing collections"
+  maxOngoingTokensPerSecond: BigInt!
+  "Tokens per second from agreement terms"
+  tokensPerSecond: BigInt!
+  "Tokens per entity per second from agreement terms"
+  tokensPerEntityPerSecond: BigInt!
+  "Minimum seconds between collections"
+  minSecondsPerCollection: Int!
+  "Maximum seconds between collections"
+  maxSecondsPerCollection: Int!
+  "Timestamp when agreement was last updated (0 if never updated)"
+  lastUpdatedAt: BigInt!
+  "Timestamp when agreement was canceled (0 if not canceled)"
+  canceledAt: BigInt!
+  "Total tokens collected over lifetime"
+  tokensCollected: BigInt!
+  "Fee collection history"
+  collections: [IndexingFeeCollection!]! @derivedFrom(field: "agreement")
+}
+
+type IndexingFeeCollection @entity(immutable: true) {
+  id: Bytes!
+  agreement: IndexingAgreement!
   currentEpoch: BigInt!
   tokensCollected: BigInt!
   entities: BigInt!
@@ -46,7 +58,6 @@ type IndexingFeesCollected @entity(immutable: true) {
   poiBlockNumber: BigInt!
   blockNumber: BigInt!
   blockTimestamp: BigInt!
-  transactionHash: Bytes!
 }
 
 type IndexerDeploymentLatest @entity(immutable: false) {

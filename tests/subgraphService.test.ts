@@ -2,12 +2,12 @@ import { assert, describe, test, clearStore, afterEach } from 'matchstick-as'
 import { Address, Bytes, BigInt, ethereum } from '@graphprotocol/graph-ts'
 import {
   handleIndexingAgreementAccepted,
-  handleIndexingAgreementCanceled,
+  handleIndexingAgreementUpdated,
   handleIndexingFeesCollectedV1,
-} from '../src/mapping'
+} from '../src/subgraphService'
 import {
   IndexingAgreementAccepted as AcceptedEvent,
-  IndexingAgreementCanceled as CanceledEvent,
+  IndexingAgreementUpdated as UpdatedEvent,
   IndexingFeesCollectedV1 as FeesCollectedEvent,
 } from '../generated/SubgraphService/SubgraphService'
 import { newMockEvent } from 'matchstick-as'
@@ -46,13 +46,15 @@ function createAcceptedEvent(
   return event
 }
 
-function createCanceledEvent(
+function createUpdatedEvent(
   indexer: Address,
   payer: Address,
   agreementId: Bytes,
-  canceledOnBehalfOf: Address,
-): CanceledEvent {
-  let event = changetype<CanceledEvent>(newMockEvent())
+  allocationId: Address,
+  version: i32,
+  versionTerms: Bytes,
+): UpdatedEvent {
+  let event = changetype<UpdatedEvent>(newMockEvent())
 
   event.parameters = new Array()
   event.parameters.push(new ethereum.EventParam('indexer', ethereum.Value.fromAddress(indexer)))
@@ -61,111 +63,15 @@ function createCanceledEvent(
     new ethereum.EventParam('agreementId', ethereum.Value.fromFixedBytes(agreementId)),
   )
   event.parameters.push(
-    new ethereum.EventParam('canceledOnBehalfOf', ethereum.Value.fromAddress(canceledOnBehalfOf)),
+    new ethereum.EventParam('allocationId', ethereum.Value.fromAddress(allocationId)),
+  )
+  event.parameters.push(new ethereum.EventParam('version', ethereum.Value.fromI32(version)))
+  event.parameters.push(
+    new ethereum.EventParam('versionTerms', ethereum.Value.fromBytes(versionTerms)),
   )
 
   return event
 }
-
-describe('IndexingAgreementAccepted', () => {
-  afterEach(() => {
-    clearStore()
-  })
-
-  test('creates entity with correct fields', () => {
-    let indexer = Address.fromString('0x0000000000000000000000000000000000000001')
-    let payer = Address.fromString('0x0000000000000000000000000000000000000002')
-    let agreementId = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
-    let allocationId = Address.fromString('0x0000000000000000000000000000000000000003')
-    let subgraphDeploymentId = Bytes.fromHexString('0x' + 'ab'.repeat(32))
-    let versionTerms = Bytes.fromHexString('0xdeadbeef')
-
-    let event = createAcceptedEvent(
-      indexer,
-      payer,
-      agreementId,
-      allocationId,
-      subgraphDeploymentId,
-      1,
-      versionTerms,
-    )
-    handleIndexingAgreementAccepted(event)
-
-    let id = event.transaction.hash.concatI32(event.logIndex.toI32()).toHexString()
-    assert.entityCount('IndexingAgreementAccepted', 1)
-    assert.fieldEquals('IndexingAgreementAccepted', id, 'indexer', indexer.toHexString())
-    assert.fieldEquals('IndexingAgreementAccepted', id, 'payer', payer.toHexString())
-    assert.fieldEquals('IndexingAgreementAccepted', id, 'agreementId', agreementId.toHexString())
-    assert.fieldEquals('IndexingAgreementAccepted', id, 'allocationId', allocationId.toHexString())
-  })
-
-  test('handles multiple events', () => {
-    let indexer = Address.fromString('0x0000000000000000000000000000000000000001')
-    let payer = Address.fromString('0x0000000000000000000000000000000000000002')
-    let allocationId = Address.fromString('0x0000000000000000000000000000000000000003')
-    let subgraphDeploymentId = Bytes.fromHexString('0x' + 'ab'.repeat(32))
-    let versionTerms = Bytes.fromHexString('0xdeadbeef')
-
-    let agreementId1 = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
-    let agreementId2 = Bytes.fromHexString('0x1112131415161718191a1b1c1d1e1f20')
-
-    let event1 = createAcceptedEvent(
-      indexer,
-      payer,
-      agreementId1,
-      allocationId,
-      subgraphDeploymentId,
-      1,
-      versionTerms,
-    )
-    let event2 = createAcceptedEvent(
-      indexer,
-      payer,
-      agreementId2,
-      allocationId,
-      subgraphDeploymentId,
-      1,
-      versionTerms,
-    )
-    // Give event2 a different tx hash so entity IDs differ
-    event2.transaction.hash = Bytes.fromHexString(
-      '0x1111111111111111111111111111111111111111111111111111111111111111',
-    ) as Bytes
-
-    handleIndexingAgreementAccepted(event1)
-    handleIndexingAgreementAccepted(event2)
-
-    assert.entityCount('IndexingAgreementAccepted', 2)
-  })
-})
-
-describe('IndexingAgreementCanceled', () => {
-  afterEach(() => {
-    clearStore()
-  })
-
-  test('creates entity with canceledBy mapped from canceledOnBehalfOf', () => {
-    let indexer = Address.fromString('0x0000000000000000000000000000000000000001')
-    let payer = Address.fromString('0x0000000000000000000000000000000000000002')
-    let agreementId = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
-    let canceledOnBehalfOf = Address.fromString('0x0000000000000000000000000000000000000002')
-
-    let event = createCanceledEvent(indexer, payer, agreementId, canceledOnBehalfOf)
-    handleIndexingAgreementCanceled(event)
-
-    let id = event.transaction.hash.concatI32(event.logIndex.toI32()).toHexString()
-    assert.entityCount('IndexingAgreementCanceled', 1)
-    assert.fieldEquals('IndexingAgreementCanceled', id, 'indexer', indexer.toHexString())
-    assert.fieldEquals('IndexingAgreementCanceled', id, 'payer', payer.toHexString())
-    assert.fieldEquals('IndexingAgreementCanceled', id, 'agreementId', agreementId.toHexString())
-    assert.fieldEquals(
-      'IndexingAgreementCanceled',
-      id,
-      'canceledBy',
-      canceledOnBehalfOf.toHexString(),
-    )
-  })
-})
 
 function createFeesCollectedEvent(
   indexer: Address,
@@ -215,12 +121,126 @@ function createFeesCollectedEvent(
   return event
 }
 
-describe('IndexingFeesCollectedV1', () => {
+// Encode IndexingAgreementTermsV1: (uint256 tokensPerSecond, uint256 tokensPerEntityPerSecond)
+function encodeVersionTerms(tokensPerSecond: BigInt, tokensPerEntityPerSecond: BigInt): Bytes {
+  let tuple = new ethereum.Tuple()
+  tuple.push(ethereum.Value.fromUnsignedBigInt(tokensPerSecond))
+  tuple.push(ethereum.Value.fromUnsignedBigInt(tokensPerEntityPerSecond))
+  return ethereum.encode(ethereum.Value.fromTuple(tuple))!
+}
+
+describe('handleIndexingAgreementAccepted', () => {
   afterEach(() => {
     clearStore()
   })
 
-  test('creates immutable entity and mutable IndexerDeploymentLatest', () => {
+  test('creates IndexingAgreement with SS-specific fields', () => {
+    let indexer = Address.fromString('0x0000000000000000000000000000000000000001')
+    let payer = Address.fromString('0x0000000000000000000000000000000000000002')
+    let agreementId = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
+    let allocationId = Address.fromString('0x0000000000000000000000000000000000000003')
+    let subgraphDeploymentId = Bytes.fromHexString('0x' + 'ab'.repeat(32))
+    let tokensPerSecond = BigInt.fromI32(1000)
+    let tokensPerEntityPerSecond = BigInt.fromI32(50)
+    let versionTerms = encodeVersionTerms(tokensPerSecond, tokensPerEntityPerSecond)
+
+    let event = createAcceptedEvent(
+      indexer,
+      payer,
+      agreementId,
+      allocationId,
+      subgraphDeploymentId,
+      1,
+      versionTerms,
+    )
+    handleIndexingAgreementAccepted(event)
+
+    assert.entityCount('IndexingAgreement', 1)
+    assert.fieldEquals(
+      'IndexingAgreement',
+      agreementId.toHexString(),
+      'allocationId',
+      allocationId.toHexString(),
+    )
+    assert.fieldEquals(
+      'IndexingAgreement',
+      agreementId.toHexString(),
+      'subgraphDeploymentId',
+      subgraphDeploymentId.toHexString(),
+    )
+    assert.fieldEquals('IndexingAgreement', agreementId.toHexString(), 'tokensPerSecond', '1000')
+    assert.fieldEquals(
+      'IndexingAgreement',
+      agreementId.toHexString(),
+      'tokensPerEntityPerSecond',
+      '50',
+    )
+    // State remains NotAccepted until RC handler fires
+    assert.fieldEquals('IndexingAgreement', agreementId.toHexString(), 'state', 'NotAccepted')
+  })
+})
+
+describe('handleIndexingAgreementUpdated', () => {
+  afterEach(() => {
+    clearStore()
+  })
+
+  test('updates allocation and terms on existing agreement', () => {
+    let indexer = Address.fromString('0x0000000000000000000000000000000000000001')
+    let payer = Address.fromString('0x0000000000000000000000000000000000000002')
+    let agreementId = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
+    let allocationId = Address.fromString('0x0000000000000000000000000000000000000003')
+    let subgraphDeploymentId = Bytes.fromHexString('0x' + 'ab'.repeat(32))
+    let versionTerms = encodeVersionTerms(BigInt.fromI32(1000), BigInt.fromI32(50))
+
+    // First: accept the agreement
+    let acceptEvent = createAcceptedEvent(
+      indexer,
+      payer,
+      agreementId,
+      allocationId,
+      subgraphDeploymentId,
+      1,
+      versionTerms,
+    )
+    handleIndexingAgreementAccepted(acceptEvent)
+
+    // Then: update with new allocation and terms
+    let newAllocationId = Address.fromString('0x0000000000000000000000000000000000000009')
+    let newVersionTerms = encodeVersionTerms(BigInt.fromI32(2000), BigInt.fromI32(100))
+    let updateEvent = createUpdatedEvent(
+      indexer,
+      payer,
+      agreementId,
+      newAllocationId,
+      1,
+      newVersionTerms,
+    )
+    handleIndexingAgreementUpdated(updateEvent)
+
+    assert.entityCount('IndexingAgreement', 1)
+    assert.fieldEquals(
+      'IndexingAgreement',
+      agreementId.toHexString(),
+      'allocationId',
+      newAllocationId.toHexString(),
+    )
+    assert.fieldEquals('IndexingAgreement', agreementId.toHexString(), 'tokensPerSecond', '2000')
+    assert.fieldEquals(
+      'IndexingAgreement',
+      agreementId.toHexString(),
+      'tokensPerEntityPerSecond',
+      '100',
+    )
+  })
+})
+
+describe('handleIndexingFeesCollectedV1', () => {
+  afterEach(() => {
+    clearStore()
+  })
+
+  test('creates IndexerDeploymentLatest', () => {
     let indexer = Address.fromString('0x0000000000000000000000000000000000000001')
     let payer = Address.fromString('0x0000000000000000000000000000000000000002')
     let agreementId = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
@@ -248,14 +268,6 @@ describe('IndexingFeesCollectedV1', () => {
     )
     handleIndexingFeesCollectedV1(event)
 
-    // Immutable entity created
-    let immutableId = event.transaction.hash.concatI32(event.logIndex.toI32()).toHexString()
-    assert.entityCount('IndexingFeesCollected', 1)
-    assert.fieldEquals('IndexingFeesCollected', immutableId, 'entities', '5000')
-    assert.fieldEquals('IndexingFeesCollected', immutableId, 'tokensCollected', '1000000')
-    assert.fieldEquals('IndexingFeesCollected', immutableId, 'indexer', indexer.toHexString())
-
-    // Mutable entity created
     let compositeId = indexer.toHexString() + '-' + subgraphDeploymentId.toHexString()
     assert.entityCount('IndexerDeploymentLatest', 1)
     assert.fieldEquals('IndexerDeploymentLatest', compositeId, 'entities', '5000')
@@ -263,7 +275,7 @@ describe('IndexingFeesCollectedV1', () => {
     assert.fieldEquals('IndexerDeploymentLatest', compositeId, 'indexer', indexer.toHexString())
   })
 
-  test('second collection updates mutable entity', () => {
+  test('second collection updates IndexerDeploymentLatest', () => {
     let indexer = Address.fromString('0x0000000000000000000000000000000000000001')
     let payer = Address.fromString('0x0000000000000000000000000000000000000002')
     let agreementId = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
@@ -272,7 +284,6 @@ describe('IndexingFeesCollectedV1', () => {
     let poi = Bytes.fromHexString('0x' + 'cc'.repeat(32))
     let metadata = Bytes.fromHexString('0xdeadbeef')
 
-    // First collection: 5000 entities
     let event1 = createFeesCollectedEvent(
       indexer,
       payer,
@@ -288,7 +299,6 @@ describe('IndexingFeesCollectedV1', () => {
     )
     handleIndexingFeesCollectedV1(event1)
 
-    // Second collection: 8000 entities (subgraph grew)
     let event2 = createFeesCollectedEvent(
       indexer,
       payer,
@@ -307,10 +317,6 @@ describe('IndexingFeesCollectedV1', () => {
     ) as Bytes
     handleIndexingFeesCollectedV1(event2)
 
-    // Two immutable entities
-    assert.entityCount('IndexingFeesCollected', 2)
-
-    // One mutable entity, updated to latest values
     let compositeId = indexer.toHexString() + '-' + subgraphDeploymentId.toHexString()
     assert.entityCount('IndexerDeploymentLatest', 1)
     assert.fieldEquals('IndexerDeploymentLatest', compositeId, 'entities', '8000')

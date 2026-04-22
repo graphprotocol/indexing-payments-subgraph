@@ -1,4 +1,4 @@
-specVersion: 1.0.0
+specVersion: 1.2.0
 indexerHints:
   prune: auto
 schema:
@@ -8,7 +8,7 @@ dataSources:
     name: SubgraphService
     network: {{network}}
     source:
-      address: "{{address}}"
+      address: "{{subgraphServiceAddress}}"
       abi: SubgraphService
       startBlock: {{startBlock}}
     mapping:
@@ -16,20 +16,47 @@ dataSources:
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - IndexingAgreementAccepted
-        - IndexingAgreementCanceled
-        - IndexingAgreementUpdated
-        - IndexingFeesCollected
+        - IndexingAgreement
+        - IndexingFeeCollection
+        - IndexerDeploymentLatest
       abis:
         - name: SubgraphService
           file: ./abis/SubgraphService.json
       eventHandlers:
         - event: IndexingAgreementAccepted(indexed address,indexed address,indexed bytes16,address,bytes32,uint8,bytes)
           handler: handleIndexingAgreementAccepted
-        - event: IndexingAgreementCanceled(indexed address,indexed address,indexed bytes16,address)
-          handler: handleIndexingAgreementCanceled
         - event: IndexingAgreementUpdated(indexed address,indexed address,indexed bytes16,address,uint8,bytes)
           handler: handleIndexingAgreementUpdated
         - event: IndexingFeesCollectedV1(indexed address,indexed address,indexed bytes16,address,bytes32,uint256,uint256,uint256,bytes32,uint256,bytes)
           handler: handleIndexingFeesCollectedV1
-      file: ./src/mapping.ts
+      file: ./src/subgraphService.ts
+  - kind: ethereum
+    name: RecurringCollector
+    network: {{network}}
+    source:
+      address: "{{recurringCollectorAddress}}"
+      abi: RecurringCollector
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - IndexingAgreement
+      abis:
+        - name: RecurringCollector
+          file: ./abis/RecurringCollector.json
+      eventHandlers:
+        - event: AgreementAccepted(indexed address,indexed address,indexed address,bytes16,uint64,uint64,uint256,uint256,uint32,uint32)
+          handler: handleAgreementAccepted
+          topic1: ["{{subgraphServiceAddress}}"]
+        - event: AgreementCanceled(indexed address,indexed address,indexed address,bytes16,uint64,uint8)
+          handler: handleAgreementCanceled
+          topic1: ["{{subgraphServiceAddress}}"]
+        - event: AgreementUpdated(indexed address,indexed address,indexed address,bytes16,uint64,uint64,uint256,uint256,uint32,uint32)
+          handler: handleAgreementUpdated
+          topic1: ["{{subgraphServiceAddress}}"]
+        - event: RCACollected(indexed address,indexed address,indexed address,bytes16,bytes32,uint256,uint256)
+          handler: handleRCACollected
+          topic1: ["{{subgraphServiceAddress}}"]
+      file: ./src/recurringCollector.ts
