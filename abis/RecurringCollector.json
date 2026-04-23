@@ -59,5 +59,16 @@
     ],
     "name": "RCACollected",
     "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "agreementId", "type": "bytes16" },
+      { "indexed": true, "name": "payer", "type": "address" },
+      { "indexed": true, "name": "offerType", "type": "uint8" },
+      { "indexed": false, "name": "offerHash", "type": "bytes32" }
+    ],
+    "name": "OfferStored",
+    "type": "event"
   }
 ]
