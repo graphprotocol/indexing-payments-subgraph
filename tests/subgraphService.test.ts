@@ -2,11 +2,13 @@ import { assert, describe, test, clearStore, afterEach } from 'matchstick-as'
 import { Address, Bytes, BigInt, ethereum } from '@graphprotocol/graph-ts'
 import {
   handleIndexingAgreementAccepted,
+  handleIndexingAgreementCanceled,
   handleIndexingAgreementUpdated,
   handleIndexingFeesCollectedV1,
 } from '../src/subgraphService'
 import {
   IndexingAgreementAccepted as AcceptedEvent,
+  IndexingAgreementCanceled as CanceledEvent,
   IndexingAgreementUpdated as UpdatedEvent,
   IndexingFeesCollectedV1 as FeesCollectedEvent,
 } from '../generated/SubgraphService/SubgraphService'
@@ -41,6 +43,27 @@ function createAcceptedEvent(
   event.parameters.push(new ethereum.EventParam('version', ethereum.Value.fromI32(version)))
   event.parameters.push(
     new ethereum.EventParam('versionTerms', ethereum.Value.fromBytes(versionTerms)),
+  )
+
+  return event
+}
+
+function createCanceledEvent(
+  indexer: Address,
+  payer: Address,
+  agreementId: Bytes,
+  canceledOnBehalfOf: Address,
+): CanceledEvent {
+  let event = changetype<CanceledEvent>(newMockEvent())
+
+  event.parameters = new Array()
+  event.parameters.push(new ethereum.EventParam('indexer', ethereum.Value.fromAddress(indexer)))
+  event.parameters.push(new ethereum.EventParam('payer', ethereum.Value.fromAddress(payer)))
+  event.parameters.push(
+    new ethereum.EventParam('agreementId', ethereum.Value.fromFixedBytes(agreementId)),
+  )
+  event.parameters.push(
+    new ethereum.EventParam('canceledOnBehalfOf', ethereum.Value.fromAddress(canceledOnBehalfOf)),
   )
 
   return event
@@ -153,6 +176,7 @@ describe('handleIndexingAgreementAccepted', () => {
       1,
       versionTerms,
     )
+    event.block.number = BigInt.fromI32(100)
     handleIndexingAgreementAccepted(event)
 
     assert.entityCount('IndexingAgreement', 1)
@@ -175,8 +199,46 @@ describe('handleIndexingAgreementAccepted', () => {
       'tokensPerEntityPerSecond',
       '50',
     )
+    assert.fieldEquals(
+      'IndexingAgreement',
+      agreementId.toHexString(),
+      'lastStateChangeBlock',
+      '100',
+    )
     // State remains NotAccepted until RC handler fires
     assert.fieldEquals('IndexingAgreement', agreementId.toHexString(), 'state', 'NotAccepted')
+  })
+})
+
+describe('handleIndexingAgreementCanceled', () => {
+  afterEach(() => {
+    clearStore()
+  })
+
+  test('sets canceledBy to canceledOnBehalfOf and stamps lastStateChangeBlock', () => {
+    let indexer = Address.fromString('0x0000000000000000000000000000000000000001')
+    let payer = Address.fromString('0x0000000000000000000000000000000000000002')
+    let agreementId = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
+    // Operator address, distinct from payer/indexer, to prove the handler
+    // captures whoever actually initiated the cancel rather than inferring it.
+    let operator = Address.fromString('0x000000000000000000000000000000000000000a')
+
+    let event = createCanceledEvent(indexer, payer, agreementId, operator)
+    event.block.number = BigInt.fromI32(200)
+    handleIndexingAgreementCanceled(event)
+
+    assert.fieldEquals(
+      'IndexingAgreement',
+      agreementId.toHexString(),
+      'canceledBy',
+      operator.toHexString(),
+    )
+    assert.fieldEquals(
+      'IndexingAgreement',
+      agreementId.toHexString(),
+      'lastStateChangeBlock',
+      '200',
+    )
   })
 })
 
@@ -216,6 +278,7 @@ describe('handleIndexingAgreementUpdated', () => {
       1,
       newVersionTerms,
     )
+    updateEvent.block.number = BigInt.fromI32(300)
     handleIndexingAgreementUpdated(updateEvent)
 
     assert.entityCount('IndexingAgreement', 1)
@@ -231,6 +294,12 @@ describe('handleIndexingAgreementUpdated', () => {
       agreementId.toHexString(),
       'tokensPerEntityPerSecond',
       '100',
+    )
+    assert.fieldEquals(
+      'IndexingAgreement',
+      agreementId.toHexString(),
+      'lastStateChangeBlock',
+      '300',
     )
   })
 })
