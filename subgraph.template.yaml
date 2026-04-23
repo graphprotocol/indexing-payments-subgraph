@@ -19,12 +19,17 @@ dataSources:
         - IndexingAgreement
         - IndexingFeeCollection
         - IndexerDeploymentLatest
+        - IndexingAgreementAccepted
+        - IndexingAgreementCanceled
+        - IndexingAgreementUpdated
       abis:
         - name: SubgraphService
           file: ./abis/SubgraphService.json
       eventHandlers:
         - event: IndexingAgreementAccepted(indexed address,indexed address,indexed bytes16,address,bytes32,uint8,bytes)
           handler: handleIndexingAgreementAccepted
+        - event: IndexingAgreementCanceled(indexed address,indexed address,indexed bytes16,address)
+          handler: handleIndexingAgreementCanceled
         - event: IndexingAgreementUpdated(indexed address,indexed address,indexed bytes16,address,uint8,bytes)
           handler: handleIndexingAgreementUpdated
         - event: IndexingFeesCollectedV1(indexed address,indexed address,indexed bytes16,address,bytes32,uint256,uint256,uint256,bytes32,uint256,bytes)
@@ -43,6 +48,8 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - IndexingAgreement
+        - OfferStored
+        - Offer
       abis:
         - name: RecurringCollector
           file: ./abis/RecurringCollector.json
@@ -59,4 +66,6 @@ dataSources:
         - event: RCACollected(indexed address,indexed address,indexed address,bytes16,bytes32,uint256,uint256)
           handler: handleRCACollected
           topic1: ["{{subgraphServiceAddress}}"]
+        - event: OfferStored(indexed bytes16,indexed address,indexed uint8,bytes32)
+          handler: handleOfferStored
       file: ./src/recurringCollector.ts

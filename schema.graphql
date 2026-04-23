@@ -71,3 +71,76 @@ type IndexerDeploymentLatest @entity(immutable: false) {
   blockNumber: BigInt!
   blockTimestamp: BigInt!
 }
+
+# Immutable transition logs. The aggregated IndexingAgreement entity above
+# serves current-state queries; these append-only logs serve event-sourcing
+# consumers (e.g. dipper's chain_listener polls them since-block to replay
+# state transitions into its local DB). Preserving both views lets snapshot
+# and streaming consumers share one subgraph.
+type IndexingAgreementAccepted @entity(immutable: true) {
+  id: ID!
+  indexer: Bytes!
+  payer: Bytes!
+  agreementId: Bytes!
+  allocationId: Bytes!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type IndexingAgreementCanceled @entity(immutable: true) {
+  id: ID!
+  indexer: Bytes!
+  payer: Bytes!
+  agreementId: Bytes!
+  "Address that initiated the cancel (from SubgraphService canceledOnBehalfOf param)"
+  canceledBy: Bytes!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+type IndexingAgreementUpdated @entity(immutable: true) {
+  id: ID!
+  indexer: Bytes!
+  payer: Bytes!
+  agreementId: Bytes!
+  allocationId: Bytes!
+  version: Int!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+# Immutable log of every OfferStored event emitted by RecurringCollector.
+# OFFER_TYPE_NEW = 0, OFFER_TYPE_UPDATE = 1.
+type OfferStored @entity(immutable: true) {
+  id: ID!
+  agreementId: Bytes!
+  payer: Bytes!
+  offerType: Int!
+  offerHash: Bytes!
+  blockNumber: BigInt!
+  blockTimestamp: BigInt!
+  transactionHash: Bytes!
+}
+
+# First stored offer per agreementId, keyed by bytes16 agreement ID.
+# Dipper queries this entity as an idempotency gate -- avoids re-submitting
+# an offer after a crashed-mid-flight restart where the on-chain tx landed
+# but dipper lost track of it.
+#
+# Declared immutable because, for a given agreementId, the RCA identifying
+# fields (payer, dataService, serviceProvider, deadline, nonce) are fixed by
+# the id derivation, so any duplicate OfferStored event for the same id would
+# carry the same offerHash. The handler enforces this by returning early on
+# the second event instead of attempting to overwrite.
+type Offer @entity(immutable: true) {
+  id: Bytes!
+  payer: Bytes!
+  offerType: Int!
+  offerHash: Bytes!
+  createdAtBlock: BigInt!
+  createdAtTimestamp: BigInt!
+  createdAtTx: Bytes!
+}

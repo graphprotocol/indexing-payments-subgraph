@@ -2,11 +2,13 @@ import { assert, describe, test, clearStore, afterEach } from 'matchstick-as'
 import { Address, Bytes, BigInt, ethereum } from '@graphprotocol/graph-ts'
 import {
   handleIndexingAgreementAccepted,
+  handleIndexingAgreementCanceled,
   handleIndexingAgreementUpdated,
   handleIndexingFeesCollectedV1,
 } from '../src/subgraphService'
 import {
   IndexingAgreementAccepted as AcceptedEvent,
+  IndexingAgreementCanceled as CanceledEvent,
   IndexingAgreementUpdated as UpdatedEvent,
   IndexingFeesCollectedV1 as FeesCollectedEvent,
 } from '../generated/SubgraphService/SubgraphService'
@@ -41,6 +43,30 @@ function createAcceptedEvent(
   event.parameters.push(new ethereum.EventParam('version', ethereum.Value.fromI32(version)))
   event.parameters.push(
     new ethereum.EventParam('versionTerms', ethereum.Value.fromBytes(versionTerms)),
+  )
+
+  return event
+}
+
+function createCanceledEvent(
+  indexer: Address,
+  payer: Address,
+  agreementId: Bytes,
+  canceledOnBehalfOf: Address,
+): CanceledEvent {
+  let event = changetype<CanceledEvent>(newMockEvent())
+
+  event.parameters = new Array()
+  event.parameters.push(new ethereum.EventParam('indexer', ethereum.Value.fromAddress(indexer)))
+  event.parameters.push(new ethereum.EventParam('payer', ethereum.Value.fromAddress(payer)))
+  event.parameters.push(
+    new ethereum.EventParam('agreementId', ethereum.Value.fromFixedBytes(agreementId)),
+  )
+  event.parameters.push(
+    new ethereum.EventParam(
+      'canceledOnBehalfOf',
+      ethereum.Value.fromAddress(canceledOnBehalfOf),
+    ),
   )
 
   return event
@@ -177,6 +203,29 @@ describe('handleIndexingAgreementAccepted', () => {
     )
     // State remains NotAccepted until RC handler fires
     assert.fieldEquals('IndexingAgreement', agreementId.toHexString(), 'state', 'NotAccepted')
+
+    // Immutable transition log emitted for event-sourcing consumers
+    assert.entityCount('IndexingAgreementAccepted', 1)
+  })
+})
+
+describe('handleIndexingAgreementCanceled', () => {
+  afterEach(() => {
+    clearStore()
+  })
+
+  test('emits immutable IndexingAgreementCanceled log with canceledBy address', () => {
+    let indexer = Address.fromString('0x0000000000000000000000000000000000000001')
+    let payer = Address.fromString('0x0000000000000000000000000000000000000002')
+    let agreementId = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
+    let canceledOnBehalfOf = Address.fromString('0x0000000000000000000000000000000000000004')
+
+    let event = createCanceledEvent(indexer, payer, agreementId, canceledOnBehalfOf)
+    handleIndexingAgreementCanceled(event)
+
+    assert.entityCount('IndexingAgreementCanceled', 1)
+    // Aggregated entity state is owned by the RC handler — SS handler must not create one
+    assert.entityCount('IndexingAgreement', 0)
   })
 })
 
@@ -232,6 +281,10 @@ describe('handleIndexingAgreementUpdated', () => {
       'tokensPerEntityPerSecond',
       '100',
     )
+
+    // One log per event: the accept and the update each emit their own immutable log
+    assert.entityCount('IndexingAgreementAccepted', 1)
+    assert.entityCount('IndexingAgreementUpdated', 1)
   })
 })
 

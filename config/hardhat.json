@@ -1,6 +1,6 @@
 {
   "network": "hardhat",
-  "subgraphServiceAddress": "0x0000000000000000000000000000000000000000",
+  "subgraphServiceAddress": "0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9",
   "recurringCollectorAddress": "0x0000000000000000000000000000000000000000",
   "startBlock": 0
 }

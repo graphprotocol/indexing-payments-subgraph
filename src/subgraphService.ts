@@ -1,10 +1,17 @@
 import { ethereum } from '@graphprotocol/graph-ts'
 import {
   IndexingAgreementAccepted as AcceptedEvent,
+  IndexingAgreementCanceled as CanceledEvent,
   IndexingAgreementUpdated as UpdatedEvent,
   IndexingFeesCollectedV1 as FeesCollectedEvent,
 } from '../generated/SubgraphService/SubgraphService'
-import { IndexerDeploymentLatest, IndexingFeeCollection } from '../generated/schema'
+import {
+  IndexerDeploymentLatest,
+  IndexingFeeCollection,
+  IndexingAgreementAccepted,
+  IndexingAgreementCanceled,
+  IndexingAgreementUpdated,
+} from '../generated/schema'
 import { createOrLoadIndexingAgreement } from './helpers'
 
 export function handleIndexingAgreementAccepted(event: AcceptedEvent): void {
@@ -20,6 +27,34 @@ export function handleIndexingAgreementAccepted(event: AcceptedEvent): void {
   }
 
   agreement.save()
+
+  let logId = event.transaction.hash.concatI32(event.logIndex.toI32()).toHexString()
+  let log = new IndexingAgreementAccepted(logId)
+  log.indexer = event.params.indexer
+  log.payer = event.params.payer
+  log.agreementId = event.params.agreementId
+  log.allocationId = event.params.allocationId
+  log.blockNumber = event.block.number
+  log.blockTimestamp = event.block.timestamp
+  log.transactionHash = event.transaction.hash
+  log.save()
+}
+
+export function handleIndexingAgreementCanceled(event: CanceledEvent): void {
+  // State and canceledAt are set by RecurringCollector.handleAgreementCanceled,
+  // which emits the canonical cancel event with the canceledBy enum. This
+  // handler just writes the immutable transition log for event-sourcing
+  // consumers (dipper's chain_listener).
+  let logId = event.transaction.hash.concatI32(event.logIndex.toI32()).toHexString()
+  let log = new IndexingAgreementCanceled(logId)
+  log.indexer = event.params.indexer
+  log.payer = event.params.payer
+  log.agreementId = event.params.agreementId
+  log.canceledBy = event.params.canceledOnBehalfOf
+  log.blockNumber = event.block.number
+  log.blockTimestamp = event.block.timestamp
+  log.transactionHash = event.transaction.hash
+  log.save()
 }
 
 export function handleIndexingAgreementUpdated(event: UpdatedEvent): void {
@@ -34,6 +69,18 @@ export function handleIndexingAgreementUpdated(event: UpdatedEvent): void {
   }
 
   agreement.save()
+
+  let logId = event.transaction.hash.concatI32(event.logIndex.toI32()).toHexString()
+  let log = new IndexingAgreementUpdated(logId)
+  log.indexer = event.params.indexer
+  log.payer = event.params.payer
+  log.agreementId = event.params.agreementId
+  log.allocationId = event.params.allocationId
+  log.version = event.params.version
+  log.blockNumber = event.block.number
+  log.blockTimestamp = event.block.timestamp
+  log.transactionHash = event.transaction.hash
+  log.save()
 }
 
 export function handleIndexingFeesCollectedV1(event: FeesCollectedEvent): void {

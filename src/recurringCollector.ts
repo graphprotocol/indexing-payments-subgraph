@@ -1,9 +1,10 @@
-import { IndexingAgreement } from '../generated/schema'
+import { IndexingAgreement, Offer, OfferStored } from '../generated/schema'
 import {
   AgreementAccepted,
   AgreementCanceled,
   AgreementUpdated,
   RCACollected,
+  OfferStored as OfferStoredEvent,
 } from '../generated/RecurringCollector/RecurringCollector'
 import { createOrLoadIndexingAgreement, BIGINT_ZERO } from './helpers'
 
@@ -60,4 +61,37 @@ export function handleRCACollected(event: RCACollected): void {
   agreement.lastCollectionAt = event.block.timestamp
   agreement.tokensCollected = agreement.tokensCollected.plus(event.params.tokens)
   agreement.save()
+}
+
+export function handleOfferStored(event: OfferStoredEvent): void {
+  // Immutable event log
+  let logId = event.transaction.hash.concatI32(event.logIndex.toI32()).toHexString()
+  let log = new OfferStored(logId)
+  log.agreementId = event.params.agreementId
+  log.payer = event.params.payer
+  log.offerType = event.params.offerType
+  log.offerHash = event.params.offerHash
+  log.blockNumber = event.block.number
+  log.blockTimestamp = event.block.timestamp
+  log.transactionHash = event.transaction.hash
+  log.save()
+
+  // First-offer entity keyed by agreementId (bytes16). Immutable: if an
+  // entity already exists, a duplicate OfferStored event for the same
+  // agreement id (e.g. dipper crashed and re-submitted, or a chain reorg
+  // re-emitted) carries the same offerHash by construction and we return
+  // early. Writing to an immutable entity a second time is a graph-node
+  // error that would halt the subgraph, so the guard is load-bearing.
+  let existing = Offer.load(event.params.agreementId)
+  if (existing != null) {
+    return
+  }
+  let offer = new Offer(event.params.agreementId)
+  offer.payer = event.params.payer
+  offer.offerType = event.params.offerType
+  offer.offerHash = event.params.offerHash
+  offer.createdAtBlock = event.block.number
+  offer.createdAtTimestamp = event.block.timestamp
+  offer.createdAtTx = event.transaction.hash
+  offer.save()
 }
