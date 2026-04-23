@@ -43,6 +43,7 @@ dataSources:
       language: wasm/assemblyscript
       entities:
         - IndexingAgreement
+        - Offer
       abis:
         - name: RecurringCollector
           file: ./abis/RecurringCollector.json
@@ -59,4 +60,6 @@ dataSources:
         - event: RCACollected(indexed address,indexed address,indexed address,bytes16,bytes32,uint256,uint256)
           handler: handleRCACollected
           topic1: ["{{subgraphServiceAddress}}"]
+        - event: OfferStored(indexed bytes16,indexed address,indexed uint8,bytes32)
+          handler: handleOfferStored
       file: ./src/recurringCollector.ts
