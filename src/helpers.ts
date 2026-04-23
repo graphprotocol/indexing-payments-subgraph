@@ -1,4 +1,4 @@
-import { BigInt, Bytes } from '@graphprotocol/graph-ts'
+import { Address, BigInt, Bytes } from '@graphprotocol/graph-ts'
 import { IndexingAgreement } from '../generated/schema'
 
 export const BIGINT_ZERO = BigInt.fromI32(0)
@@ -23,7 +23,13 @@ export function createOrLoadIndexingAgreement(agreementId: Bytes): IndexingAgree
     agreement.maxSecondsPerCollection = 0
     agreement.lastUpdatedAt = BIGINT_ZERO
     agreement.canceledAt = BIGINT_ZERO
+    // Default to 20-byte zero address rather than Bytes.empty(). Graph-node
+    // serializes empty Bytes on non-nullable fields with unpredictable
+    // padding (observed as "0x00000000" in practice), which breaks strict
+    // 20-byte-address parsers on the consumer side.
+    agreement.canceledBy = Address.zero() as Bytes
     agreement.tokensCollected = BIGINT_ZERO
+    agreement.lastStateChangeBlock = BIGINT_ZERO
   }
   return agreement
 }
