@@ -1,6 +1,7 @@
 import { ethereum } from '@graphprotocol/graph-ts'
 import {
   IndexingAgreementAccepted as AcceptedEvent,
+  IndexingAgreementCanceled as CanceledEvent,
   IndexingAgreementUpdated as UpdatedEvent,
   IndexingFeesCollectedV1 as FeesCollectedEvent,
 } from '../generated/SubgraphService/SubgraphService'
@@ -19,6 +20,18 @@ export function handleIndexingAgreementAccepted(event: AcceptedEvent): void {
     agreement.tokensPerEntityPerSecond = terms[1].toBigInt()
   }
 
+  agreement.lastStateChangeBlock = event.block.number
+  agreement.save()
+}
+
+export function handleIndexingAgreementCanceled(event: CanceledEvent): void {
+  let agreement = createOrLoadIndexingAgreement(event.params.agreementId)
+  // canceledOnBehalfOf is the actual signer that initiated the cancel. For
+  // operator-initiated cancels this is the operator, not the payer/indexer
+  // directly. Dipper's chain_listener compares this to its own signer
+  // address to decide CanceledByRequester vs CanceledByIndexer.
+  agreement.canceledBy = event.params.canceledOnBehalfOf
+  agreement.lastStateChangeBlock = event.block.number
   agreement.save()
 }
 
@@ -33,6 +46,7 @@ export function handleIndexingAgreementUpdated(event: UpdatedEvent): void {
     agreement.tokensPerEntityPerSecond = terms[1].toBigInt()
   }
 
+  agreement.lastStateChangeBlock = event.block.number
   agreement.save()
 }
 

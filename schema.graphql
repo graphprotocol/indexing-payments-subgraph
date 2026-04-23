@@ -42,8 +42,12 @@ type IndexingAgreement @entity(immutable: false) {
   lastUpdatedAt: BigInt!
   "Timestamp when agreement was canceled (0 if not canceled)"
   canceledAt: BigInt!
+  "Address that initiated the cancel (zero address if not canceled). Taken from SubgraphService.IndexingAgreementCanceled.canceledOnBehalfOf so operator-initiated cancels are captured correctly."
+  canceledBy: Bytes!
   "Total tokens collected over lifetime"
   tokensCollected: BigInt!
+  "Block number of the latest state change on this agreement (Accepted / Updated / Canceled / RCACollected). Consumers that reconcile state diffs poll with `lastStateChangeBlock_gt` since last seen block."
+  lastStateChangeBlock: BigInt!
   "Fee collection history"
   collections: [IndexingFeeCollection!]! @derivedFrom(field: "agreement")
 }
