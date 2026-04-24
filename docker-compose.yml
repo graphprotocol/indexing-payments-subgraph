@@ -1,0 +1,6 @@
+services:
+  indexing-payments-subgraph:
+    image: ghcr.io/graphprotocol/indexing-payments-subgraph:${TAG:-local}
+    build:
+      context: .
+      dockerfile: Dockerfile
