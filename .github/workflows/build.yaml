@@ -33,6 +33,7 @@ jobs:
             type=sha
 
       - uses: docker/login-action@v4
+        if: github.event_name != 'pull_request'
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -47,4 +48,4 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           pull: true
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/indexing-payments-subgraph:buildcache
-          cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/indexing-payments-subgraph:buildcache,mode=max
+          cache-to: ${{ github.event_name != 'pull_request' && format('type=registry,ref=ghcr.io/{0}/indexing-payments-subgraph:buildcache,mode=max', github.repository_owner) || '' }}
