@@ -1,0 +1,28 @@
+# VCS / CI
+.git
+.github
+
+# Local agent / editor state
+.claude
+.vscode
+.idea
+.DS_Store
+CLAUDE.md
+
+# Dependencies (rebuilt inside the image by npm ci)
+node_modules
+
+# Build artefacts (regenerated downstream)
+build
+generated
+subgraph.yaml
+
+# Docker / local tooling
+Dockerfile
+.dockerignore
+docker-compose.yml
+justfile
+
+# Test outputs
+tests/.bin
+tests/.latest.json
