@@ -4,7 +4,7 @@
 #
 # The image has no entrypoint: it is a source carrier, not a runtime service.
 
-FROM node:23.11-bookworm-slim
+FROM node:24-bookworm-slim
 
 WORKDIR /opt/indexing-payments-subgraph
 
