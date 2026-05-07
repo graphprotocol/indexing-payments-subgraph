@@ -23,6 +23,7 @@ export function handleAgreementAccepted(event: AgreementAccepted): void {
   agreement.maxSecondsPerCollection = event.params.maxSecondsPerCollection.toI32()
   agreement.canceledAt = BIGINT_ZERO
   agreement.tokensCollected = BIGINT_ZERO
+  agreement.lastStateChangeBlock = event.block.number
 
   agreement.save()
 }
@@ -31,13 +32,17 @@ export function handleAgreementCanceled(event: AgreementCanceled): void {
   let agreement = IndexingAgreement.load(event.params.agreementId)
   if (agreement == null) return
 
-  // canceledBy enum: 0=ServiceProvider, 1=Payer
+  // canceledBy enum: 0=ServiceProvider, 1=Payer. The actual canceler address
+  // is written by subgraphService.handleIndexingAgreementCanceled, which
+  // fires in the same transaction and reads the SubgraphService event's
+  // canceledOnBehalfOf parameter.
   if (event.params.canceledBy == 0) {
     agreement.state = 'CanceledByServiceProvider'
   } else {
     agreement.state = 'CanceledByPayer'
   }
   agreement.canceledAt = event.params.canceledAt
+  agreement.lastStateChangeBlock = event.block.number
   agreement.save()
 }
 
@@ -51,6 +56,7 @@ export function handleAgreementUpdated(event: AgreementUpdated): void {
   agreement.maxOngoingTokensPerSecond = event.params.maxOngoingTokensPerSecond
   agreement.minSecondsPerCollection = event.params.minSecondsPerCollection.toI32()
   agreement.maxSecondsPerCollection = event.params.maxSecondsPerCollection.toI32()
+  agreement.lastStateChangeBlock = event.block.number
   agreement.save()
 }
 
@@ -60,6 +66,7 @@ export function handleRCACollected(event: RCACollected): void {
 
   agreement.lastCollectionAt = event.block.timestamp
   agreement.tokensCollected = agreement.tokensCollected.plus(event.params.tokens)
+  agreement.lastStateChangeBlock = event.block.number
   agreement.save()
 }
 
