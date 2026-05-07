@@ -71,3 +71,23 @@ type IndexerDeploymentLatest @entity(immutable: false) {
   blockNumber: BigInt!
   blockTimestamp: BigInt!
 }
+
+# First stored offer per agreementId, keyed by bytes16 agreement ID.
+# Dipper queries this entity as an idempotency gate -- avoids re-submitting
+# an offer after a crashed-mid-flight restart where the on-chain tx landed
+# but dipper lost track of it.
+#
+# Declared immutable because, for a given agreementId, the RCA identifying
+# fields (payer, dataService, serviceProvider, deadline, nonce) are fixed by
+# the id derivation, so any duplicate OfferStored event for the same id would
+# carry the same offerHash. The handler enforces this by returning early on
+# the second event instead of attempting to overwrite.
+type Offer @entity(immutable: true) {
+  id: Bytes!
+  payer: Bytes!
+  offerType: Int!
+  offerHash: Bytes!
+  createdAtBlock: BigInt!
+  createdAtTimestamp: BigInt!
+  createdAtTx: Bytes!
+}
