@@ -76,21 +76,26 @@ type IndexerDeploymentLatest @entity(immutable: false) {
   blockTimestamp: BigInt!
 }
 
-# First stored offer per agreementId, keyed by bytes16 agreement ID.
+# Latest stored offer per agreementId, keyed by bytes16 agreement ID.
 # Dipper queries this entity as an idempotency gate -- avoids re-submitting
 # an offer after a crashed-mid-flight restart where the on-chain tx landed
 # but dipper lost track of it.
 #
-# Declared immutable because, for a given agreementId, the RCA identifying
-# fields (payer, dataService, serviceProvider, deadline, nonce) are fixed by
-# the id derivation, so any duplicate OfferStored event for the same id would
-# carry the same offerHash. The handler enforces this by returning early on
-# the second event instead of attempting to overwrite.
-type Offer @entity(immutable: true) {
+# Mutable because the contract overwrites the stored offer in two cases:
+# (1) an OFFER_TYPE_UPDATE event refreshes the hash and type to the latest
+# RCAU terms; (2) an OfferCancelled event stamps `canceledAt` so dipper
+# treats `canceledAt > 0` as "no live offer; safe to re-submit." Storage
+# stays bounded because there is at most one Offer entity per agreementId.
+type Offer @entity(immutable: false) {
   id: Bytes!
   payer: Bytes!
+  "Latest offer type observed (1 = OFFER_TYPE_NEW, 2 = OFFER_TYPE_UPDATE)."
   offerType: Int!
+  "Latest stored offer hash; tracks the on-chain rcaOffers / rcauOffers entry."
   offerHash: Bytes!
+  "Timestamp when the offer was canceled on-chain (0 if currently live)."
+  canceledAt: BigInt!
+  "Block/timestamp/tx of the first OFFER_TYPE_NEW for this agreement id."
   createdAtBlock: BigInt!
   createdAtTimestamp: BigInt!
   createdAtTx: Bytes!

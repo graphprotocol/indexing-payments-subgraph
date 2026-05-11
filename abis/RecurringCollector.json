@@ -6,7 +6,6 @@
       { "indexed": true, "name": "payer", "type": "address" },
       { "indexed": true, "name": "serviceProvider", "type": "address" },
       { "indexed": false, "name": "agreementId", "type": "bytes16" },
-      { "indexed": false, "name": "acceptedAt", "type": "uint64" },
       { "indexed": false, "name": "endsAt", "type": "uint64" },
       { "indexed": false, "name": "maxInitialTokens", "type": "uint256" },
       { "indexed": false, "name": "maxOngoingTokensPerSecond", "type": "uint256" },
@@ -23,7 +22,6 @@
       { "indexed": true, "name": "payer", "type": "address" },
       { "indexed": true, "name": "serviceProvider", "type": "address" },
       { "indexed": false, "name": "agreementId", "type": "bytes16" },
-      { "indexed": false, "name": "canceledAt", "type": "uint64" },
       { "indexed": false, "name": "canceledBy", "type": "uint8" }
     ],
     "name": "AgreementCanceled",
@@ -36,7 +34,6 @@
       { "indexed": true, "name": "payer", "type": "address" },
       { "indexed": true, "name": "serviceProvider", "type": "address" },
       { "indexed": false, "name": "agreementId", "type": "bytes16" },
-      { "indexed": false, "name": "updatedAt", "type": "uint64" },
       { "indexed": false, "name": "endsAt", "type": "uint64" },
       { "indexed": false, "name": "maxInitialTokens", "type": "uint256" },
       { "indexed": false, "name": "maxOngoingTokensPerSecond", "type": "uint256" },
@@ -69,6 +66,16 @@
       { "indexed": false, "name": "offerHash", "type": "bytes32" }
     ],
     "name": "OfferStored",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "name": "caller", "type": "address" },
+      { "indexed": true, "name": "agreementId", "type": "bytes16" },
+      { "indexed": true, "name": "hash", "type": "bytes32" }
+    ],
+    "name": "OfferCancelled",
     "type": "event"
   }
 ]
