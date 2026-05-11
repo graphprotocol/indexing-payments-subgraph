@@ -50,13 +50,13 @@ dataSources:
         - name: RecurringCollector
           file: ./abis/RecurringCollector.json
       eventHandlers:
-        - event: AgreementAccepted(indexed address,indexed address,indexed address,bytes16,uint64,uint64,uint256,uint256,uint32,uint32)
+        - event: AgreementAccepted(indexed address,indexed address,indexed address,bytes16,uint64,uint256,uint256,uint32,uint32)
           handler: handleAgreementAccepted
           topic1: ["{{subgraphServiceAddress}}"]
-        - event: AgreementCanceled(indexed address,indexed address,indexed address,bytes16,uint64,uint8)
+        - event: AgreementCanceled(indexed address,indexed address,indexed address,bytes16,uint8)
           handler: handleAgreementCanceled
           topic1: ["{{subgraphServiceAddress}}"]
-        - event: AgreementUpdated(indexed address,indexed address,indexed address,bytes16,uint64,uint64,uint256,uint256,uint32,uint32)
+        - event: AgreementUpdated(indexed address,indexed address,indexed address,bytes16,uint64,uint256,uint256,uint32,uint32)
           handler: handleAgreementUpdated
           topic1: ["{{subgraphServiceAddress}}"]
         - event: RCACollected(indexed address,indexed address,indexed address,bytes16,bytes32,uint256,uint256)
@@ -64,4 +64,6 @@ dataSources:
           topic1: ["{{subgraphServiceAddress}}"]
         - event: OfferStored(indexed bytes16,indexed address,indexed uint8,bytes32)
           handler: handleOfferStored
+        - event: OfferCancelled(indexed address,indexed bytes16,indexed bytes32)
+          handler: handleOfferCancelled
       file: ./src/recurringCollector.ts

@@ -2,16 +2,51 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "name": "dataService", "type": "address" },
-      { "indexed": true, "name": "payer", "type": "address" },
-      { "indexed": true, "name": "serviceProvider", "type": "address" },
-      { "indexed": false, "name": "agreementId", "type": "bytes16" },
-      { "indexed": false, "name": "acceptedAt", "type": "uint64" },
-      { "indexed": false, "name": "endsAt", "type": "uint64" },
-      { "indexed": false, "name": "maxInitialTokens", "type": "uint256" },
-      { "indexed": false, "name": "maxOngoingTokensPerSecond", "type": "uint256" },
-      { "indexed": false, "name": "minSecondsPerCollection", "type": "uint32" },
-      { "indexed": false, "name": "maxSecondsPerCollection", "type": "uint32" }
+      {
+        "indexed": true,
+        "name": "dataService",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "payer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "serviceProvider",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "agreementId",
+        "type": "bytes16"
+      },
+      {
+        "indexed": false,
+        "name": "endsAt",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "name": "maxInitialTokens",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "maxOngoingTokensPerSecond",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "minSecondsPerCollection",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "name": "maxSecondsPerCollection",
+        "type": "uint32"
+      }
     ],
     "name": "AgreementAccepted",
     "type": "event"
@@ -19,12 +54,31 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "name": "dataService", "type": "address" },
-      { "indexed": true, "name": "payer", "type": "address" },
-      { "indexed": true, "name": "serviceProvider", "type": "address" },
-      { "indexed": false, "name": "agreementId", "type": "bytes16" },
-      { "indexed": false, "name": "canceledAt", "type": "uint64" },
-      { "indexed": false, "name": "canceledBy", "type": "uint8" }
+      {
+        "indexed": true,
+        "name": "dataService",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "payer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "serviceProvider",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "agreementId",
+        "type": "bytes16"
+      },
+      {
+        "indexed": false,
+        "name": "canceledBy",
+        "type": "uint8"
+      }
     ],
     "name": "AgreementCanceled",
     "type": "event"
@@ -32,16 +86,51 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "name": "dataService", "type": "address" },
-      { "indexed": true, "name": "payer", "type": "address" },
-      { "indexed": true, "name": "serviceProvider", "type": "address" },
-      { "indexed": false, "name": "agreementId", "type": "bytes16" },
-      { "indexed": false, "name": "updatedAt", "type": "uint64" },
-      { "indexed": false, "name": "endsAt", "type": "uint64" },
-      { "indexed": false, "name": "maxInitialTokens", "type": "uint256" },
-      { "indexed": false, "name": "maxOngoingTokensPerSecond", "type": "uint256" },
-      { "indexed": false, "name": "minSecondsPerCollection", "type": "uint32" },
-      { "indexed": false, "name": "maxSecondsPerCollection", "type": "uint32" }
+      {
+        "indexed": true,
+        "name": "dataService",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "payer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "serviceProvider",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "agreementId",
+        "type": "bytes16"
+      },
+      {
+        "indexed": false,
+        "name": "endsAt",
+        "type": "uint64"
+      },
+      {
+        "indexed": false,
+        "name": "maxInitialTokens",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "maxOngoingTokensPerSecond",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "minSecondsPerCollection",
+        "type": "uint32"
+      },
+      {
+        "indexed": false,
+        "name": "maxSecondsPerCollection",
+        "type": "uint32"
+      }
     ],
     "name": "AgreementUpdated",
     "type": "event"
@@ -49,13 +138,41 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "name": "dataService", "type": "address" },
-      { "indexed": true, "name": "payer", "type": "address" },
-      { "indexed": true, "name": "serviceProvider", "type": "address" },
-      { "indexed": false, "name": "agreementId", "type": "bytes16" },
-      { "indexed": false, "name": "collectionId", "type": "bytes32" },
-      { "indexed": false, "name": "tokens", "type": "uint256" },
-      { "indexed": false, "name": "dataServiceCut", "type": "uint256" }
+      {
+        "indexed": true,
+        "name": "dataService",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "payer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "serviceProvider",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "agreementId",
+        "type": "bytes16"
+      },
+      {
+        "indexed": false,
+        "name": "collectionId",
+        "type": "bytes32"
+      },
+      {
+        "indexed": false,
+        "name": "tokens",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "dataServiceCut",
+        "type": "uint256"
+      }
     ],
     "name": "RCACollected",
     "type": "event"
@@ -63,12 +180,53 @@
   {
     "anonymous": false,
     "inputs": [
-      { "indexed": true, "name": "agreementId", "type": "bytes16" },
-      { "indexed": true, "name": "payer", "type": "address" },
-      { "indexed": true, "name": "offerType", "type": "uint8" },
-      { "indexed": false, "name": "offerHash", "type": "bytes32" }
+      {
+        "indexed": true,
+        "name": "agreementId",
+        "type": "bytes16"
+      },
+      {
+        "indexed": true,
+        "name": "payer",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "offerType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "name": "offerHash",
+        "type": "bytes32"
+      }
     ],
     "name": "OfferStored",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes16",
+        "name": "agreementId",
+        "type": "bytes16"
+      },
+      {
+        "indexed": true,
+        "internalType": "bytes32",
+        "name": "hash",
+        "type": "bytes32"
+      }
+    ],
+    "name": "OfferCancelled",
     "type": "event"
   }
 ]

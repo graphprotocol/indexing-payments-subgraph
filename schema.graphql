@@ -81,16 +81,16 @@ type IndexerDeploymentLatest @entity(immutable: false) {
 # an offer after a crashed-mid-flight restart where the on-chain tx landed
 # but dipper lost track of it.
 #
-# Declared immutable because, for a given agreementId, the RCA identifying
-# fields (payer, dataService, serviceProvider, deadline, nonce) are fixed by
-# the id derivation, so any duplicate OfferStored event for the same id would
-# carry the same offerHash. The handler enforces this by returning early on
-# the second event instead of attempting to overwrite.
-type Offer @entity(immutable: true) {
+# Mutable so the OfferCancelled handler can stamp `canceledAt`. Dipper
+# treats `canceledAt > 0` as "no live offer; safe to re-submit." Storage
+# stays bounded because there is at most one Offer entity per agreementId.
+type Offer @entity(immutable: false) {
   id: Bytes!
   payer: Bytes!
   offerType: Int!
   offerHash: Bytes!
+  "Timestamp when the offer was canceled on-chain (0 if currently live)."
+  canceledAt: BigInt!
   createdAtBlock: BigInt!
   createdAtTimestamp: BigInt!
   createdAtTx: Bytes!

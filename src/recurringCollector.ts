@@ -5,17 +5,29 @@ import {
   AgreementUpdated,
   RCACollected,
   OfferStored as OfferStoredEvent,
+  OfferCancelled as OfferCancelledEvent,
 } from '../generated/RecurringCollector/RecurringCollector'
 import { createOrLoadIndexingAgreement, BIGINT_ZERO } from './helpers'
+
+// CancelAgreementBy enum from IRecurringCollector.sol:
+//   0 = ServiceProvider, 1 = Payer, 2 = ThirdParty
+// The contract treats anything that isn't Payer as ServiceProvider when
+// emitting the SubgraphService-side IndexingAgreementCanceled event, so we
+// mirror that mapping here. ThirdParty (2) is currently unreachable from
+// SubgraphService — adding the explicit branch documents the contract's
+// intent and keeps the mapping correct if a future data service surfaces it.
+const CANCEL_BY_PAYER: i32 = 1
 
 export function handleAgreementAccepted(event: AgreementAccepted): void {
   let agreement = createOrLoadIndexingAgreement(event.params.agreementId)
 
+  // The contract sets `agreement.acceptedAt = uint64(block.timestamp)` inside
+  // accept(), so the event's block timestamp is the canonical value.
   agreement.payer = event.params.payer
   agreement.indexer = event.params.serviceProvider
   agreement.state = 'Accepted'
-  agreement.acceptedAt = event.params.acceptedAt
-  agreement.lastCollectionAt = event.params.acceptedAt
+  agreement.acceptedAt = event.block.timestamp
+  agreement.lastCollectionAt = event.block.timestamp
   agreement.endsAt = event.params.endsAt
   agreement.maxInitialTokens = event.params.maxInitialTokens
   agreement.maxOngoingTokensPerSecond = event.params.maxOngoingTokensPerSecond
@@ -32,16 +44,18 @@ export function handleAgreementCanceled(event: AgreementCanceled): void {
   let agreement = IndexingAgreement.load(event.params.agreementId)
   if (agreement == null) return
 
-  // canceledBy enum: 0=ServiceProvider, 1=Payer. The actual canceler address
-  // is written by subgraphService.handleIndexingAgreementCanceled, which
-  // fires in the same transaction and reads the SubgraphService event's
-  // canceledOnBehalfOf parameter.
-  if (event.params.canceledBy == 0) {
-    agreement.state = 'CanceledByServiceProvider'
-  } else {
+  // The actual canceler address is written by
+  // subgraphService.handleIndexingAgreementCanceled, which fires in the
+  // same transaction and reads the SubgraphService event's
+  // canceledOnBehalfOf parameter. The contract sets
+  // `agreement.canceledAt = uint64(block.timestamp)` inside cancel(), so
+  // the event's block timestamp is the canonical value.
+  if (event.params.canceledBy == CANCEL_BY_PAYER) {
     agreement.state = 'CanceledByPayer'
+  } else {
+    agreement.state = 'CanceledByServiceProvider'
   }
-  agreement.canceledAt = event.params.canceledAt
+  agreement.canceledAt = event.block.timestamp
   agreement.lastStateChangeBlock = event.block.number
   agreement.save()
 }
@@ -50,7 +64,7 @@ export function handleAgreementUpdated(event: AgreementUpdated): void {
   let agreement = IndexingAgreement.load(event.params.agreementId)
   if (agreement == null) return
 
-  agreement.lastUpdatedAt = event.params.updatedAt
+  agreement.lastUpdatedAt = event.block.timestamp
   agreement.endsAt = event.params.endsAt
   agreement.maxInitialTokens = event.params.maxInitialTokens
   agreement.maxOngoingTokensPerSecond = event.params.maxOngoingTokensPerSecond
@@ -71,22 +85,37 @@ export function handleRCACollected(event: RCACollected): void {
 }
 
 export function handleOfferStored(event: OfferStoredEvent): void {
-  // First-offer entity keyed by agreementId (bytes16). Immutable: if an
-  // entity already exists, a duplicate OfferStored event for the same
-  // agreement id (e.g. dipper crashed and re-submitted, or a chain reorg
-  // re-emitted) carries the same offerHash by construction and we return
-  // early. Writing to an immutable entity a second time is a graph-node
-  // error that would halt the subgraph, so the guard is load-bearing.
+  // First-offer entity keyed by agreementId (bytes16). A duplicate
+  // OfferStored event for the same agreement id (e.g. dipper crashed and
+  // re-submitted, or a chain reorg re-emitted) carries the same offerHash
+  // by construction; we keep the original timestamps and only refresh
+  // canceledAt back to zero in case a previous offer was canceled and a
+  // fresh one was stored under the same id.
   let existing = Offer.load(event.params.agreementId)
   if (existing != null) {
+    existing.canceledAt = BIGINT_ZERO
+    existing.save()
     return
   }
   let offer = new Offer(event.params.agreementId)
   offer.payer = event.params.payer
   offer.offerType = event.params.offerType
   offer.offerHash = event.params.offerHash
+  offer.canceledAt = BIGINT_ZERO
   offer.createdAtBlock = event.block.number
   offer.createdAtTimestamp = event.block.timestamp
   offer.createdAtTx = event.transaction.hash
+  offer.save()
+}
+
+export function handleOfferCancelled(event: OfferCancelledEvent): void {
+  // OfferCancelled fires when a payer (or any signer at SCOPE_SIGNED)
+  // cancels a stored RCA/RCAU offer. The contract deletes the on-chain
+  // entry, so dipper's idempotency gate must treat the Offer as no longer
+  // live. Set canceledAt to the event's block timestamp; consumers query
+  // `canceledAt > 0` to decide "safe to re-submit".
+  let offer = Offer.load(event.params.agreementId)
+  if (offer == null) return
+  offer.canceledAt = event.block.timestamp
   offer.save()
 }
