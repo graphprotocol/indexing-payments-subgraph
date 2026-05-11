@@ -85,26 +85,24 @@ export function handleRCACollected(event: RCACollected): void {
 }
 
 export function handleOfferStored(event: OfferStoredEvent): void {
-  // First-offer entity keyed by agreementId (bytes16). A duplicate
-  // OfferStored event for the same agreement id (e.g. dipper crashed and
-  // re-submitted, or a chain reorg re-emitted) carries the same offerHash
-  // by construction; we keep the original timestamps and only refresh
-  // canceledAt back to zero in case a previous offer was canceled and a
-  // fresh one was stored under the same id.
-  let existing = Offer.load(event.params.agreementId)
-  if (existing != null) {
-    existing.canceledAt = BIGINT_ZERO
-    existing.save()
-    return
+  // OfferStored fires once per agreementId for OFFER_TYPE_NEW and again
+  // for each OFFER_TYPE_UPDATE that changes the stored offer hash. The
+  // contract overwrites $.rcaOffers / $.rcauOffers in-place, so dipper's
+  // idempotency gate has to see the latest terms — keep the entity
+  // mutable and refresh offerType / offerHash on every event. `createdAt`
+  // fields stay pinned to the first OFFER_TYPE_NEW so consumers can
+  // distinguish initial offer from subsequent updates.
+  let offer = Offer.load(event.params.agreementId)
+  if (offer == null) {
+    offer = new Offer(event.params.agreementId)
+    offer.createdAtBlock = event.block.number
+    offer.createdAtTimestamp = event.block.timestamp
+    offer.createdAtTx = event.transaction.hash
   }
-  let offer = new Offer(event.params.agreementId)
   offer.payer = event.params.payer
   offer.offerType = event.params.offerType
   offer.offerHash = event.params.offerHash
   offer.canceledAt = BIGINT_ZERO
-  offer.createdAtBlock = event.block.number
-  offer.createdAtTimestamp = event.block.timestamp
-  offer.createdAtTx = event.transaction.hash
   offer.save()
 }
 

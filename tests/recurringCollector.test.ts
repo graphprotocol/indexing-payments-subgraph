@@ -14,6 +14,7 @@ const AGREEMENT_ID = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
 // (NONE=0, NEW=1, UPDATE=2). Tests construct events with the live value so
 // the stored entity matches what production indexers would see.
 const OFFER_TYPE_NEW: i32 = 1
+const OFFER_TYPE_UPDATE: i32 = 2
 
 function createOfferStoredEvent(
   agreementId: Bytes,
@@ -76,19 +77,32 @@ describe('handleOfferStored', () => {
     assert.fieldEquals('Offer', id, 'canceledAt', '0')
   })
 
-  test('duplicate event for same agreementId is a no-op (idempotency guard)', () => {
-    let offerHash = Bytes.fromHexString('0x' + 'aa'.repeat(32))
+  test('OFFER_TYPE_UPDATE overwrites offerType and offerHash; createdAt stays pinned', () => {
+    let initialHash = Bytes.fromHexString('0x' + 'aa'.repeat(32))
+    let updatedHash = Bytes.fromHexString('0x' + 'bb'.repeat(32))
+    let id = AGREEMENT_ID.toHexString()
 
-    let event1 = createOfferStoredEvent(AGREEMENT_ID, OFFER_TYPE_NEW, offerHash)
-    handleOfferStored(event1)
+    let initial = createOfferStoredEvent(AGREEMENT_ID, OFFER_TYPE_NEW, initialHash)
+    initial.block.number = BigInt.fromI32(100)
+    initial.block.timestamp = BigInt.fromI32(1000)
+    handleOfferStored(initial)
+    assert.fieldEquals('Offer', id, 'offerType', OFFER_TYPE_NEW.toString())
+    assert.fieldEquals('Offer', id, 'offerHash', initialHash.toHexString())
+    assert.fieldEquals('Offer', id, 'createdAtBlock', '100')
+    assert.fieldEquals('Offer', id, 'createdAtTimestamp', '1000')
 
-    let event2 = createOfferStoredEvent(AGREEMENT_ID, OFFER_TYPE_NEW, offerHash)
-    event2.transaction.hash = Bytes.fromHexString(
-      '0x1111111111111111111111111111111111111111111111111111111111111111',
-    ) as Bytes
-    handleOfferStored(event2)
+    let update = createOfferStoredEvent(AGREEMENT_ID, OFFER_TYPE_UPDATE, updatedHash)
+    update.block.number = BigInt.fromI32(200)
+    update.block.timestamp = BigInt.fromI32(2000)
+    handleOfferStored(update)
 
     assert.entityCount('Offer', 1)
+    // Latest terms reflect the UPDATE event...
+    assert.fieldEquals('Offer', id, 'offerType', OFFER_TYPE_UPDATE.toString())
+    assert.fieldEquals('Offer', id, 'offerHash', updatedHash.toHexString())
+    // ...but createdAt stays pinned to the initial OFFER_TYPE_NEW.
+    assert.fieldEquals('Offer', id, 'createdAtBlock', '100')
+    assert.fieldEquals('Offer', id, 'createdAtTimestamp', '1000')
   })
 
   test('OfferCancelled stamps canceledAt; OfferStored after that clears it', () => {
