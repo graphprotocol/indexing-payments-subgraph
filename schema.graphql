@@ -22,6 +22,8 @@ type IndexingAgreement @entity(immutable: false) {
   state: AgreementState!
   "Timestamp when the agreement was accepted"
   acceptedAt: BigInt!
+  "Transaction hash of the SubgraphService.acceptIndexingAgreement call. Auditable link from the indexed agreement back to the on-chain accept (typically a multicall(startService+acceptIndexingAgreement)). 32-byte zero sentinel if never accepted (entity created from a stray Updated/Canceled event)."
+  acceptedAtTx: Bytes!
   "Timestamp of last collection"
   lastCollectionAt: BigInt!
   "Timestamp when the agreement ends"
@@ -42,6 +44,8 @@ type IndexingAgreement @entity(immutable: false) {
   lastUpdatedAt: BigInt!
   "Timestamp when agreement was canceled (0 if not canceled)"
   canceledAt: BigInt!
+  "Transaction hash of the SubgraphService.cancelIndexingAgreement* call (32-byte zero if not canceled). Mirrors canceledAt/canceledBy for full auditability of the cancel event."
+  canceledAtTx: Bytes!
   "Address that initiated the cancel (zero address if not canceled). Taken from SubgraphService.IndexingAgreementCanceled.canceledOnBehalfOf so operator-initiated cancels are captured correctly."
   canceledBy: Bytes!
   "Total tokens collected over lifetime"
@@ -62,6 +66,8 @@ type IndexingFeeCollection @entity(immutable: true) {
   poiBlockNumber: BigInt!
   blockNumber: BigInt!
   blockTimestamp: BigInt!
+  "Transaction hash of the SubgraphService.collect call that emitted this fee collection. Auditable per-payment link."
+  transactionHash: Bytes!
 }
 
 type IndexerDeploymentLatest @entity(immutable: false) {
