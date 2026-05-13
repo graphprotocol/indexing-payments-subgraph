@@ -12,6 +12,7 @@ export function handleIndexingAgreementAccepted(event: AcceptedEvent): void {
   let agreement = createOrLoadIndexingAgreement(event.params.agreementId)
   agreement.allocationId = event.params.allocationId
   agreement.subgraphDeploymentId = event.params.subgraphDeploymentId
+  agreement.acceptedAtTx = event.transaction.hash
 
   let decoded = ethereum.decode('(uint256,uint256)', event.params.versionTerms)
   if (decoded != null) {
@@ -31,6 +32,7 @@ export function handleIndexingAgreementCanceled(event: CanceledEvent): void {
   // directly. Dipper's chain_listener compares this to its own signer
   // address to decide CanceledByRequester vs CanceledByIndexer.
   agreement.canceledBy = event.params.canceledOnBehalfOf
+  agreement.canceledAtTx = event.transaction.hash
   agreement.lastStateChangeBlock = event.block.number
   agreement.save()
 }
@@ -61,6 +63,7 @@ export function handleIndexingFeesCollectedV1(event: FeesCollectedEvent): void {
   collection.poiBlockNumber = event.params.poiBlockNumber
   collection.blockNumber = event.block.number
   collection.blockTimestamp = event.block.timestamp
+  collection.transactionHash = event.transaction.hash
   collection.save()
 
   let compositeId =

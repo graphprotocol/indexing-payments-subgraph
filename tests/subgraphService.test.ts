@@ -177,6 +177,8 @@ describe('handleIndexingAgreementAccepted', () => {
       versionTerms,
     )
     event.block.number = BigInt.fromI32(100)
+    let acceptTxHash = Bytes.fromHexString('0x' + 'aa'.repeat(32)) as Bytes
+    event.transaction.hash = acceptTxHash
     handleIndexingAgreementAccepted(event)
 
     assert.entityCount('IndexingAgreement', 1)
@@ -185,6 +187,12 @@ describe('handleIndexingAgreementAccepted', () => {
       agreementId.toHexString(),
       'allocationId',
       allocationId.toHexString(),
+    )
+    assert.fieldEquals(
+      'IndexingAgreement',
+      agreementId.toHexString(),
+      'acceptedAtTx',
+      acceptTxHash.toHexString(),
     )
     assert.fieldEquals(
       'IndexingAgreement',
@@ -225,6 +233,8 @@ describe('handleIndexingAgreementCanceled', () => {
 
     let event = createCanceledEvent(indexer, payer, agreementId, operator)
     event.block.number = BigInt.fromI32(200)
+    let cancelTxHash = Bytes.fromHexString('0x' + 'bb'.repeat(32)) as Bytes
+    event.transaction.hash = cancelTxHash
     handleIndexingAgreementCanceled(event)
 
     assert.fieldEquals(
@@ -232,6 +242,12 @@ describe('handleIndexingAgreementCanceled', () => {
       agreementId.toHexString(),
       'canceledBy',
       operator.toHexString(),
+    )
+    assert.fieldEquals(
+      'IndexingAgreement',
+      agreementId.toHexString(),
+      'canceledAtTx',
+      cancelTxHash.toHexString(),
     )
     assert.fieldEquals(
       'IndexingAgreement',
@@ -335,6 +351,9 @@ describe('handleIndexingFeesCollectedV1', () => {
       poiBlockNumber,
       metadata,
     )
+    let collectTxHash = Bytes.fromHexString('0x' + 'cd'.repeat(32)) as Bytes
+    event.transaction.hash = collectTxHash
+    event.logIndex = BigInt.fromI32(0)
     handleIndexingFeesCollectedV1(event)
 
     let compositeId = indexer.toHexString() + '-' + subgraphDeploymentId.toHexString()
@@ -342,6 +361,16 @@ describe('handleIndexingFeesCollectedV1', () => {
     assert.fieldEquals('IndexerDeploymentLatest', compositeId, 'entities', '5000')
     assert.fieldEquals('IndexerDeploymentLatest', compositeId, 'tokensCollected', '1000000')
     assert.fieldEquals('IndexerDeploymentLatest', compositeId, 'indexer', indexer.toHexString())
+
+    // IndexingFeeCollection id is event.transaction.hash.concatI32(logIndex).
+    let collectionId = collectTxHash.concatI32(0).toHexString()
+    assert.entityCount('IndexingFeeCollection', 1)
+    assert.fieldEquals(
+      'IndexingFeeCollection',
+      collectionId,
+      'transactionHash',
+      collectTxHash.toHexString(),
+    )
   })
 
   test('second collection updates IndexerDeploymentLatest', () => {
