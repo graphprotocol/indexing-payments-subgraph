@@ -9,13 +9,9 @@ import {
 } from '../generated/RecurringCollector/RecurringCollector'
 import { createOrLoadIndexingAgreement, BIGINT_ZERO } from './helpers'
 
-// CancelAgreementBy enum from IRecurringCollector.sol:
-//   0 = ServiceProvider, 1 = Payer, 2 = ThirdParty
-// The contract treats anything that isn't Payer as ServiceProvider when
-// emitting the SubgraphService-side IndexingAgreementCanceled event, so we
-// mirror that mapping here. ThirdParty (2) is currently unreachable from
-// SubgraphService — adding the explicit branch documents the contract's
-// intent and keeps the mapping correct if a future data service surfaces it.
+// CancelAgreementBy enum from IRecurringCollector.sol: 0 = ServiceProvider,
+// 1 = Payer, 2 = ThirdParty. The contract treats anything that isn't Payer as
+// ServiceProvider; ThirdParty is currently unreachable from SubgraphService.
 const CANCEL_BY_PAYER: i32 = 1
 
 export function handleAgreementAccepted(event: AgreementAccepted): void {
@@ -25,6 +21,9 @@ export function handleAgreementAccepted(event: AgreementAccepted): void {
   // accept(), so the event's block timestamp is the canonical value.
   agreement.payer = event.params.payer
   agreement.indexer = event.params.serviceProvider
+  // Link to the Indexer registration record by address. Safe to set even if that
+  // record isn't indexed yet — the reference resolves once the indexer registers.
+  agreement.indexerInfo = event.params.serviceProvider
   agreement.state = 'Accepted'
   agreement.acceptedAt = event.block.timestamp
   agreement.lastCollectionAt = event.block.timestamp
@@ -44,12 +43,9 @@ export function handleAgreementCanceled(event: AgreementCanceled): void {
   let agreement = IndexingAgreement.load(event.params.agreementId)
   if (agreement == null) return
 
-  // The actual canceler address is written by
-  // subgraphService.handleIndexingAgreementCanceled, which fires in the
-  // same transaction and reads the SubgraphService event's
-  // canceledOnBehalfOf parameter. The contract sets
-  // `agreement.canceledAt = uint64(block.timestamp)` inside cancel(), so
-  // the event's block timestamp is the canonical value.
+  // The actual canceler address is written by handleIndexingAgreementCanceled,
+  // which fires in the same tx and reads canceledOnBehalfOf. The contract sets
+  // canceledAt = block.timestamp inside cancel(), so the event timestamp is canonical.
   if (event.params.canceledBy == CANCEL_BY_PAYER) {
     agreement.state = 'CanceledByPayer'
   } else {
@@ -85,13 +81,9 @@ export function handleRCACollected(event: RCACollected): void {
 }
 
 export function handleOfferStored(event: OfferStoredEvent): void {
-  // OfferStored fires once per agreementId for OFFER_TYPE_NEW and again
-  // for each OFFER_TYPE_UPDATE that changes the stored offer hash. The
-  // contract overwrites $.rcaOffers / $.rcauOffers in-place, so dipper's
-  // idempotency gate has to see the latest terms — keep the entity
-  // mutable and refresh offerType / offerHash on every event. `createdAt`
-  // fields stay pinned to the first OFFER_TYPE_NEW so consumers can
-  // distinguish initial offer from subsequent updates.
+  // Fires for OFFER_TYPE_NEW and again for each OFFER_TYPE_UPDATE that changes the
+  // stored hash. The contract overwrites in place, so refresh offerType/offerHash
+  // every event; createdAt stays pinned to the first NEW to mark the initial offer.
   let offer = Offer.load(event.params.agreementId)
   if (offer == null) {
     offer = new Offer(event.params.agreementId)
@@ -107,11 +99,9 @@ export function handleOfferStored(event: OfferStoredEvent): void {
 }
 
 export function handleOfferCancelled(event: OfferCancelledEvent): void {
-  // OfferCancelled fires when a payer (or any signer at SCOPE_SIGNED)
-  // cancels a stored RCA/RCAU offer. The contract deletes the on-chain
-  // entry, so dipper's idempotency gate must treat the Offer as no longer
-  // live. Set canceledAt to the event's block timestamp; consumers query
-  // `canceledAt > 0` to decide "safe to re-submit".
+  // Fires when a signer cancels a stored RCA/RCAU offer; the contract deletes the
+  // on-chain entry, so mark the Offer not-live by stamping canceledAt with the event
+  // timestamp. Consumers query `canceledAt > 0` to decide "safe to re-submit".
   let offer = Offer.load(event.params.agreementId)
   if (offer == null) return
   offer.canceledAt = event.block.timestamp

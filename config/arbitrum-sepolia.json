@@ -2,5 +2,6 @@
   "network": "arbitrum-sepolia",
   "subgraphServiceAddress": "0x0000000000000000000000000000000000000000",
   "recurringCollectorAddress": "0x0000000000000000000000000000000000000000",
-  "startBlock": 0
+  "startBlock": 0,
+  "registrationStartBlock": 0
 }

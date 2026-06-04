@@ -32,6 +32,29 @@ dataSources:
         - event: IndexingFeesCollectedV1(indexed address,indexed address,indexed bytes16,address,bytes32,uint256,uint256,uint256,bytes32,uint256,bytes)
           handler: handleIndexingFeesCollectedV1
       file: ./src/subgraphService.ts
+  # Indexer registrations get their own data source so they can start from an
+  # earlier block than the agreements: an indexer typically registers its URL
+  # well before any agreement is accepted, and we want the URL indexed regardless.
+  - kind: ethereum
+    name: SubgraphServiceRegistration
+    network: {{network}}
+    source:
+      address: "{{subgraphServiceAddress}}"
+      abi: SubgraphService
+      startBlock: {{registrationStartBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Indexer
+      abis:
+        - name: SubgraphService
+          file: ./abis/SubgraphService.json
+      eventHandlers:
+        - event: ServiceProviderRegistered(indexed address,bytes)
+          handler: handleServiceProviderRegistered
+      file: ./src/subgraphService.ts
   - kind: ethereum
     name: RecurringCollector
     network: {{network}}

@@ -54,5 +54,14 @@
     ],
     "name": "IndexingFeesCollectedV1",
     "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      { "indexed": true, "internalType": "address", "name": "serviceProvider", "type": "address" },
+      { "indexed": false, "internalType": "bytes", "name": "data", "type": "bytes" }
+    ],
+    "name": "ServiceProviderRegistered",
+    "type": "event"
   }
 ]

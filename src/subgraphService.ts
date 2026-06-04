@@ -1,12 +1,13 @@
-import { ethereum } from '@graphprotocol/graph-ts'
+import { ethereum, log } from '@graphprotocol/graph-ts'
 import {
   IndexingAgreementAccepted as AcceptedEvent,
   IndexingAgreementCanceled as CanceledEvent,
   IndexingAgreementUpdated as UpdatedEvent,
   IndexingFeesCollectedV1 as FeesCollectedEvent,
 } from '../generated/SubgraphService/SubgraphService'
-import { IndexerDeploymentLatest, IndexingFeeCollection } from '../generated/schema'
-import { createOrLoadIndexingAgreement } from './helpers'
+import { ServiceProviderRegistered as RegisteredEvent } from '../generated/SubgraphServiceRegistration/SubgraphService'
+import { Indexer, IndexerDeploymentLatest, IndexingFeeCollection } from '../generated/schema'
+import { createOrLoadIndexingAgreement, tuplePrefixBytes } from './helpers'
 
 export function handleIndexingAgreementAccepted(event: AcceptedEvent): void {
   let agreement = createOrLoadIndexingAgreement(event.params.agreementId)
@@ -27,10 +28,9 @@ export function handleIndexingAgreementAccepted(event: AcceptedEvent): void {
 
 export function handleIndexingAgreementCanceled(event: CanceledEvent): void {
   let agreement = createOrLoadIndexingAgreement(event.params.agreementId)
-  // canceledOnBehalfOf is the actual signer that initiated the cancel. For
-  // operator-initiated cancels this is the operator, not the payer/indexer
-  // directly. Dipper's chain_listener compares this to its own signer
-  // address to decide CanceledByRequester vs CanceledByIndexer.
+  // canceledOnBehalfOf is the signer that initiated the cancel — for
+  // operator-initiated cancels the operator, not the payer/indexer. Dipper
+  // compares it to its own signer to decide CanceledByRequester vs CanceledByIndexer.
   agreement.canceledBy = event.params.canceledOnBehalfOf
   agreement.canceledAtTx = event.transaction.hash
   agreement.lastStateChangeBlock = event.block.number
@@ -81,4 +81,30 @@ export function handleIndexingFeesCollectedV1(event: FeesCollectedEvent): void {
   latest.blockNumber = event.block.number
   latest.blockTimestamp = event.block.timestamp
   latest.save()
+}
+
+export function handleServiceProviderRegistered(event: RegisteredEvent): void {
+  // The url/geohash/paymentsDestination ride inside the opaque `data` blob the
+  // contract re-emits; decode it the way the contract encoded it. We only keep
+  // the url (element 0); geohash and paymentsDestination are intentionally dropped.
+  let decoded = ethereum.decode('(string,string,address)', tuplePrefixBytes(event.params.data))
+  if (decoded == null || decoded.kind != ethereum.ValueKind.TUPLE) {
+    // Surface a malformed payload rather than swallowing it; the indexer simply
+    // keeps whatever url was last decoded (or none).
+    log.warning('ServiceProviderRegistered failed to decode for {} (data: {})', [
+      event.params.serviceProvider.toHexString(),
+      event.params.data.toHexString(),
+    ])
+    return
+  }
+
+  let indexer = Indexer.load(event.params.serviceProvider)
+  if (indexer == null) {
+    indexer = new Indexer(event.params.serviceProvider)
+  }
+  // Re-registration overwrites the on-chain record, so this is last-write-wins.
+  indexer.url = decoded.toTuple()[0].toString()
+  indexer.lastUpdatedAtBlock = event.block.number
+  indexer.lastUpdatedAtTx = event.transaction.hash
+  indexer.save()
 }

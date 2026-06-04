@@ -30,6 +30,7 @@ This subgraph tracks the full lifecycle of [Direct Indexing Payments](https://gi
 <tr><td><code>IndexingAgreementCanceled</code></td><td>Agreement canceled by payer or indexer</td></tr>
 <tr><td><code>IndexingAgreementUpdated</code></td><td>Agreement terms or allocation changed</td></tr>
 <tr><td><code>IndexingFeesCollectedV1</code></td><td>Fees collected against an active agreement</td></tr>
+<tr><td><code>ServiceProviderRegistered</code></td><td>Indexer registers (or re-registers) its service URL on-chain</td></tr>
 </table>
 
 <br>

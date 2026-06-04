@@ -1,13 +1,20 @@
 import { assert, describe, test, clearStore, afterEach, newMockEvent } from 'matchstick-as'
 import { Address, Bytes, BigInt, ethereum } from '@graphprotocol/graph-ts'
-import { handleOfferStored, handleOfferCancelled } from '../src/recurringCollector'
 import {
+  handleAgreementAccepted,
+  handleOfferStored,
+  handleOfferCancelled,
+} from '../src/recurringCollector'
+import {
+  AgreementAccepted as AgreementAcceptedEvent,
   OfferStored as OfferStoredEvent,
   OfferCancelled as OfferCancelledEvent,
 } from '../generated/RecurringCollector/RecurringCollector'
 
 const PAYER = Address.fromString('0x0000000000000000000000000000000000000002')
 const CALLER = Address.fromString('0x0000000000000000000000000000000000000003')
+const SERVICE_PROVIDER = Address.fromString('0x0000000000000000000000000000000000000001')
+const DATA_SERVICE = Address.fromString('0x0000000000000000000000000000000000000005')
 const AGREEMENT_ID = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
 
 // OFFER_TYPE_NEW from IAgreementCollector.sol after the audit reshuffle
@@ -36,6 +43,54 @@ function createOfferStoredEvent(
   )
   event.parameters.push(
     new ethereum.EventParam('offerHash', ethereum.Value.fromFixedBytes(offerHash)),
+  )
+
+  return event
+}
+
+function createAgreementAcceptedEvent(
+  serviceProvider: Address,
+  agreementId: Bytes,
+): AgreementAcceptedEvent {
+  let event = changetype<AgreementAcceptedEvent>(newMockEvent())
+
+  event.parameters = new Array()
+  event.parameters.push(
+    new ethereum.EventParam('dataService', ethereum.Value.fromAddress(DATA_SERVICE)),
+  )
+  event.parameters.push(new ethereum.EventParam('payer', ethereum.Value.fromAddress(PAYER)))
+  event.parameters.push(
+    new ethereum.EventParam('serviceProvider', ethereum.Value.fromAddress(serviceProvider)),
+  )
+  event.parameters.push(
+    new ethereum.EventParam('agreementId', ethereum.Value.fromFixedBytes(agreementId)),
+  )
+  event.parameters.push(
+    new ethereum.EventParam('endsAt', ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(0))),
+  )
+  event.parameters.push(
+    new ethereum.EventParam(
+      'maxInitialTokens',
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(0)),
+    ),
+  )
+  event.parameters.push(
+    new ethereum.EventParam(
+      'maxOngoingTokensPerSecond',
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(0)),
+    ),
+  )
+  event.parameters.push(
+    new ethereum.EventParam(
+      'minSecondsPerCollection',
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(0)),
+    ),
+  )
+  event.parameters.push(
+    new ethereum.EventParam(
+      'maxSecondsPerCollection',
+      ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(0)),
+    ),
   )
 
   return event
@@ -121,5 +176,22 @@ describe('handleOfferStored', () => {
     // so the idempotency gate sees the entity as live again.
     handleOfferStored(createOfferStoredEvent(AGREEMENT_ID, OFFER_TYPE_NEW, offerHash))
     assert.fieldEquals('Offer', id, 'canceledAt', '0')
+  })
+})
+
+describe('handleAgreementAccepted', () => {
+  afterEach(() => {
+    clearStore()
+  })
+
+  test('links the agreement to the indexer registration record by address', () => {
+    let event = createAgreementAcceptedEvent(SERVICE_PROVIDER, AGREEMENT_ID)
+    handleAgreementAccepted(event)
+
+    let id = AGREEMENT_ID.toHexString()
+    assert.fieldEquals('IndexingAgreement', id, 'indexer', SERVICE_PROVIDER.toHexString())
+    // indexerInfo is the typed link consumers follow to read the indexer URL in
+    // one query; it stores the same address as the Indexer entity id.
+    assert.fieldEquals('IndexingAgreement', id, 'indexerInfo', SERVICE_PROVIDER.toHexString())
   })
 })
