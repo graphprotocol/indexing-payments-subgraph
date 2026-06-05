@@ -475,6 +475,14 @@ describe('handleServiceProviderRegistered', () => {
       'lastUpdatedAtTx',
       txHash.toHexString(),
     )
+    // The account link points at the same address, so consumers can read the
+    // indexer's avatar/metadata once it has been fetched from IPFS.
+    assert.fieldEquals(
+      'Indexer',
+      serviceProvider.toHexString(),
+      'account',
+      serviceProvider.toHexString(),
+    )
   })
 
   test('re-registration overwrites the url (last write wins)', () => {
