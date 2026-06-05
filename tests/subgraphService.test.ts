@@ -500,6 +500,29 @@ describe('handleServiceProviderRegistered', () => {
     assert.fieldEquals('Indexer', serviceProvider.toHexString(), 'lastUpdatedAtBlock', '600')
   })
 
+  test('keeps two distinct indexers as separate records keyed by address', () => {
+    let firstProvider = Address.fromString('0x0000000000000000000000000000000000000001')
+    let secondProvider = Address.fromString('0x0000000000000000000000000000000000000002')
+    let paymentsDestination = Address.fromString('0x0000000000000000000000000000000000000004')
+
+    handleServiceProviderRegistered(
+      createRegisteredEvent(
+        firstProvider,
+        encodeRegistrationData('https://first.example.com', 'u33dc0', paymentsDestination),
+      ),
+    )
+    handleServiceProviderRegistered(
+      createRegisteredEvent(
+        secondProvider,
+        encodeRegistrationData('https://second.example.com', 'gbsuv7', paymentsDestination),
+      ),
+    )
+
+    assert.entityCount('Indexer', 2)
+    assert.fieldEquals('Indexer', firstProvider.toHexString(), 'url', 'https://first.example.com')
+    assert.fieldEquals('Indexer', secondProvider.toHexString(), 'url', 'https://second.example.com')
+  })
+
   test('skips and creates no entity when the payload cannot be decoded', () => {
     let serviceProvider = Address.fromString('0x0000000000000000000000000000000000000001')
     // Garbage bytes that do not decode to (string,string,address).

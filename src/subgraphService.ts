@@ -88,7 +88,9 @@ export function handleServiceProviderRegistered(event: RegisteredEvent): void {
   // contract re-emits; decode it the way the contract encoded it. We only keep
   // the url (element 0); geohash and paymentsDestination are intentionally dropped.
   let decoded = ethereum.decode('(string,string,address)', tuplePrefixBytes(event.params.data))
-  if (decoded == null || decoded.kind != ethereum.ValueKind.TUPLE) {
+  // decode() of a tuple type returns either null or a tuple-kind value, so a null
+  // check is sufficient — matching the (uint256,uint256) decode sites above.
+  if (decoded == null) {
     // Surface a malformed payload rather than swallowing it; the indexer simply
     // keeps whatever url was last decoded (or none).
     log.warning('ServiceProviderRegistered failed to decode for {} (data: {})', [
