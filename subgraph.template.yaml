@@ -90,3 +90,43 @@ dataSources:
         - event: OfferCancelled(indexed address,indexed bytes16,indexed bytes32)
           handler: handleOfferCancelled
       file: ./src/recurringCollector.ts
+  # Indexer (graph account) metadata: the EthereumDIDRegistry emits a
+  # DIDAttributeChanged event with an IPFS hash for the account's metadata
+  # document (avatar, display name, etc.), which we index alongside the URL.
+  - kind: ethereum
+    name: EthereumDIDRegistry
+    network: {{network}}
+    source:
+      address: "{{ethereumDIDRegistryAddress}}"
+      abi: EthereumDIDRegistry
+      startBlock: {{didRegistryStartBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - Account
+        - AccountMetadata
+      abis:
+        - name: EthereumDIDRegistry
+          file: ./abis/EthereumDIDRegistry.json
+      eventHandlers:
+        - event: DIDAttributeChanged(indexed address,bytes32,bytes,uint256,uint256)
+          handler: handleDIDAttributeChanged
+      file: ./src/ethereumDIDRegistry.ts
+templates:
+  # File data source: fetches an account's metadata document from IPFS, spawned
+  # by handleDIDAttributeChanged. Runs sandboxed (writes only AccountMetadata),
+  # so a slow or missing fetch never affects on-chain agreement/URL indexing.
+  - kind: file/ipfs
+    name: AccountMetadataFile
+    mapping:
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      file: ./src/ipfs.ts
+      handler: handleAccountMetadata
+      entities:
+        - AccountMetadata
+      abis:
+        - name: EthereumDIDRegistry
+          file: ./abis/EthereumDIDRegistry.json

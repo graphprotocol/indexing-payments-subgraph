@@ -108,5 +108,8 @@ export function handleServiceProviderRegistered(event: RegisteredEvent): void {
   indexer.url = decoded.toTuple()[0].toString()
   indexer.lastUpdatedAtBlock = event.block.number
   indexer.lastUpdatedAtTx = event.transaction.hash
+  // Link to this indexer's account record (avatar/metadata), keyed by the same
+  // address. Resolves once the account's metadata is indexed, if ever.
+  indexer.account = event.params.serviceProvider
   indexer.save()
 }

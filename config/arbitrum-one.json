@@ -2,6 +2,8 @@
   "network": "arbitrum-one",
   "subgraphServiceAddress": "0xb2Bb92d0DE618878E438b55D5846cfecD9301105",
   "recurringCollectorAddress": "0x0000000000000000000000000000000000000000",
+  "ethereumDIDRegistryAddress": "0xa9AEb1c6f14f4244547B9a0946C485DA99047638",
   "startBlock": 397492865,
-  "registrationStartBlock": 397492865
+  "registrationStartBlock": 397492865,
+  "didRegistryStartBlock": 42440000
 }

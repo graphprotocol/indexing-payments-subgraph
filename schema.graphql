@@ -104,6 +104,45 @@ type Indexer @entity(immutable: false) {
   lastUpdatedAtBlock: BigInt!
   "Transaction hash of the registration that last set this URL. Auditable link back to the on-chain register call."
   lastUpdatedAtTx: Bytes!
+  "Link to the indexer's account record (avatar and other off-chain metadata). Null until the indexer's GRAPH NAME SERVICE metadata has been fetched from IPFS; resolves automatically once it is. The account id is the same indexer address."
+  account: Account
+}
+
+# Graph account record, keyed by the account (e.g. indexer) address.
+#
+# Sourced from the EthereumDIDRegistry contract's DIDAttributeChanged event,
+# filtered to the GRAPH NAME SERVICE attribute, whose value points at an
+# off-chain metadata document on IPFS. We index that document so consumers can
+# read an indexer's avatar and display name from this same subgraph.
+#
+# The metadata is self-asserted by the account (set on its own DID record, not
+# verified) and populates asynchronously once graph-node fetches the IPFS file.
+# A null metadata link means "not fetched yet", not "no metadata".
+type Account @entity(immutable: false) {
+  "The account (graph account) address"
+  id: Bytes!
+  "Latest metadata document published by this account (overwritten on each update)"
+  metadata: AccountMetadata
+}
+
+# Account metadata fetched from IPFS, keyed by a composite of the registration
+# tx, log index, account, and IPFS hash so each published version is unique and
+# the entity can stay immutable.
+type AccountMetadata @entity(immutable: true) {
+  "Composite id: <txHash>-<logIndex>-<account>-<ipfsHash>"
+  id: String!
+  "Avatar image URL"
+  image: String
+  "Display name (self-asserted, not ENS-verified)"
+  displayName: String
+  "Description of the account"
+  description: String
+  "Website URL"
+  website: String
+  "Main code repository for the account"
+  codeRepository: String
+  "True if the account self-identifies as an organization"
+  isOrganization: Boolean
 }
 
 # Latest stored offer per agreementId, keyed by bytes16 agreement ID.

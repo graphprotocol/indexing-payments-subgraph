@@ -2,6 +2,8 @@
   "network": "arbitrum-sepolia",
   "subgraphServiceAddress": "0xc24A3dAC5d06d771f657A48B20cE1a671B78f26b",
   "recurringCollectorAddress": "0x0b18befc60455121ad66ae6e4a647955fcde3900",
+  "ethereumDIDRegistryAddress": "0xF5f4cA61481558709AFa94AdEDa7B5F180f4AD59",
   "startBlock": 201859812,
-  "registrationStartBlock": 201859812
+  "registrationStartBlock": 201859812,
+  "didRegistryStartBlock": 570450
 }
