@@ -1,4 +1,4 @@
-import { Bytes, ByteArray, DataSourceContext } from '@graphprotocol/graph-ts'
+import { Bytes, ByteArray, DataSourceContext, log } from '@graphprotocol/graph-ts'
 import { DIDAttributeChanged } from '../generated/EthereumDIDRegistry/EthereumDIDRegistry'
 import { AccountMetadataFile } from '../generated/templates'
 import { Account } from '../generated/schema'
@@ -9,10 +9,29 @@ const GRAPH_NAME_SERVICE = '0x72abcb436eed911d1b6046bbe645c235ec3767c842eb1005a6
 
 export function handleDIDAttributeChanged(event: DIDAttributeChanged): void {
   if (event.params.name.toHexString() != GRAPH_NAME_SERVICE) return
+
+  // A revocation re-emits the event with validTo at or before the current block,
+  // meaning the account no longer endorses this metadata. Clear the pointer so
+  // consumers stop reading a document the account has retracted.
+  if (event.params.validTo.le(event.block.timestamp)) {
+    let revoked = Account.load(event.params.identity)
+    if (revoked != null) {
+      revoked.metadata = null
+      revoked.save()
+    }
+    return
+  }
+
   // value carries the 32-byte IPFS digest but is declared as dynamic bytes, so a
   // direct call could pass any length. Guard before decoding to avoid reading
   // past the buffer (the network subgraph has a standing TODO for this).
-  if (event.params.value.length != 32) return
+  if (event.params.value.length != 32) {
+    log.debug('GRAPH NAME SERVICE value for {} is {} bytes, expected 32; skipping', [
+      event.params.identity.toHexString(),
+      event.params.value.length.toString(),
+    ])
+    return
+  }
 
   let account = Account.load(event.params.identity)
   if (account == null) {

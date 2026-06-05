@@ -7,14 +7,7 @@ import {
   newMockEvent,
   dataSourceMock,
 } from 'matchstick-as'
-import {
-  Address,
-  Bytes,
-  ByteArray,
-  BigInt,
-  DataSourceContext,
-  ethereum,
-} from '@graphprotocol/graph-ts'
+import { Address, Bytes, BigInt, DataSourceContext, ethereum } from '@graphprotocol/graph-ts'
 import { handleDIDAttributeChanged } from '../src/ethereumDIDRegistry'
 import { handleAccountMetadata } from '../src/ipfs'
 import { DIDAttributeChanged } from '../generated/EthereumDIDRegistry/EthereumDIDRegistry'
@@ -25,14 +18,31 @@ const GRAPH_NAME_SERVICE = Bytes.fromHexString(
 ) as Bytes
 const ACCOUNT = Address.fromString('0x0000000000000000000000000000000000000001')
 
-function createDIDEvent(identity: Address, name: Bytes, value: Bytes): DIDAttributeChanged {
+// Block timestamp every test event is stamped with; validTo is compared against
+// it to tell a live attribute (validTo in the future) from a revoked one.
+const BLOCK_TIME = BigInt.fromI32(1000)
+const FUTURE = BigInt.fromI32(2000)
+
+// CIDv0 for a value of 0xab repeated 32 times: base58(0x1220 + 0xab*32).
+// Hardcoded golden value so the assertion is independent of the handler's own
+// CID construction rather than re-deriving it the same way.
+const VALUE_AB = Bytes.fromHexString('0x' + 'ab'.repeat(32)) as Bytes
+const VALUE_AB_CID = 'QmZtnFaddFtzGNT8BxdHVbQrhSFdq1pWxud5z4fA4kxfDt'
+
+function createDIDEvent(
+  identity: Address,
+  name: Bytes,
+  value: Bytes,
+  validTo: BigInt,
+): DIDAttributeChanged {
   let event = changetype<DIDAttributeChanged>(newMockEvent())
+  event.block.timestamp = BLOCK_TIME
   event.parameters = new Array()
   event.parameters.push(new ethereum.EventParam('identity', ethereum.Value.fromAddress(identity)))
   event.parameters.push(new ethereum.EventParam('name', ethereum.Value.fromFixedBytes(name)))
   event.parameters.push(new ethereum.EventParam('value', ethereum.Value.fromBytes(value)))
   event.parameters.push(
-    new ethereum.EventParam('validTo', ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(0))),
+    new ethereum.EventParam('validTo', ethereum.Value.fromUnsignedBigInt(validTo)),
   )
   event.parameters.push(
     new ethereum.EventParam('previousChange', ethereum.Value.fromUnsignedBigInt(BigInt.fromI32(0))),
@@ -46,47 +56,44 @@ function mockMetadataContext(id: string): void {
   dataSourceMock.setContext(context)
 }
 
-// Mirror the handler's CID construction so we can assert the exact metadata id.
-function expectedBase58(value: Bytes): string {
-  let out = new Uint8Array(34)
-  out[0] = 0x12
-  out[1] = 0x20
-  for (let i = 0; i < 32; i++) {
-    out[i + 2] = value[i]
-  }
-  return (changetype<Bytes>(changetype<ByteArray>(out)) as Bytes).toBase58()
-}
-
 describe('handleDIDAttributeChanged', () => {
   afterEach(() => {
     clearStore()
   })
 
   test('indexes account metadata for the GRAPH NAME SERVICE attribute', () => {
-    let value = Bytes.fromHexString('0x' + 'ab'.repeat(32)) as Bytes
-    let event = createDIDEvent(ACCOUNT, GRAPH_NAME_SERVICE, value)
+    let event = createDIDEvent(ACCOUNT, GRAPH_NAME_SERVICE, VALUE_AB, FUTURE)
     let txHash = Bytes.fromHexString('0x' + 'cd'.repeat(32)) as Bytes
     event.transaction.hash = txHash
     event.logIndex = BigInt.fromI32(7)
     handleDIDAttributeChanged(event)
 
-    let metadataId =
-      txHash.toHexString() + '-7-' + ACCOUNT.toHexString() + '-' + expectedBase58(value)
+    let metadataId = txHash.toHexString() + '-7-' + ACCOUNT.toHexString() + '-' + VALUE_AB_CID
     assert.entityCount('Account', 1)
     assert.fieldEquals('Account', ACCOUNT.toHexString(), 'metadata', metadataId)
   })
 
   test('ignores DID attributes other than GRAPH NAME SERVICE', () => {
     let otherName = Bytes.fromHexString('0x' + '11'.repeat(32)) as Bytes
-    let value = Bytes.fromHexString('0x' + 'ab'.repeat(32)) as Bytes
-    handleDIDAttributeChanged(createDIDEvent(ACCOUNT, otherName, value))
+    handleDIDAttributeChanged(createDIDEvent(ACCOUNT, otherName, VALUE_AB, FUTURE))
     assert.entityCount('Account', 0)
   })
 
   test('skips a value that is not a 32-byte IPFS digest', () => {
     let value = Bytes.fromHexString('0xdeadbeef') as Bytes
-    handleDIDAttributeChanged(createDIDEvent(ACCOUNT, GRAPH_NAME_SERVICE, value))
+    handleDIDAttributeChanged(createDIDEvent(ACCOUNT, GRAPH_NAME_SERVICE, value, FUTURE))
     assert.entityCount('Account', 0)
+  })
+
+  test('clears the metadata pointer when the attribute is revoked', () => {
+    // First set the metadata (validTo in the future), then revoke it (validTo at
+    // the block time) and assert the pointer is cleared.
+    handleDIDAttributeChanged(createDIDEvent(ACCOUNT, GRAPH_NAME_SERVICE, VALUE_AB, FUTURE))
+    assert.entityCount('Account', 1)
+
+    handleDIDAttributeChanged(createDIDEvent(ACCOUNT, GRAPH_NAME_SERVICE, VALUE_AB, BLOCK_TIME))
+    assert.entityCount('Account', 1)
+    assert.fieldEquals('Account', ACCOUNT.toHexString(), 'metadata', 'null')
   })
 })
 
@@ -113,5 +120,28 @@ describe('handleAccountMetadata', () => {
     mockMetadataContext('meta-bad')
     handleAccountMetadata(Bytes.fromUTF8('{ not valid json'))
     assert.entityCount('AccountMetadata', 0)
+  })
+
+  test('leaves string fields null when the document has no recognised fields', () => {
+    mockMetadataContext('meta-empty')
+    handleAccountMetadata(Bytes.fromUTF8('{}'))
+
+    // Absent string fields resolve to the empty string, which graph-ts treats as
+    // falsy and unsets, so the stored value is null rather than "". isOrganization
+    // is only written for a real boolean, so it is left unset entirely here.
+    assert.entityCount('AccountMetadata', 1)
+    assert.fieldEquals('AccountMetadata', 'meta-empty', 'image', 'null')
+    assert.fieldEquals('AccountMetadata', 'meta-empty', 'displayName', 'null')
+    assert.fieldEquals('AccountMetadata', 'meta-empty', 'description', 'null')
+    assert.fieldEquals('AccountMetadata', 'meta-empty', 'website', 'null')
+    assert.fieldEquals('AccountMetadata', 'meta-empty', 'codeRepository', 'null')
+  })
+
+  test('records isOrganization false rather than treating it as absent', () => {
+    mockMetadataContext('meta-org-false')
+    handleAccountMetadata(Bytes.fromUTF8('{"isOrganization":false}'))
+
+    assert.entityCount('AccountMetadata', 1)
+    assert.fieldEquals('AccountMetadata', 'meta-org-false', 'isOrganization', 'false')
   })
 })
