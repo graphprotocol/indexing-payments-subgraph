@@ -243,6 +243,34 @@ describe('handleIndexingAgreementAccepted', () => {
     // State remains NotAccepted until RC handler fires
     assert.fieldEquals('IndexingAgreement', agreementId.toHexString(), 'state', 'NotAccepted')
   })
+
+  test('populates indexer, payer, and the indexer link without the RC event', () => {
+    let indexer = Address.fromString('0x0000000000000000000000000000000000000001')
+    let payer = Address.fromString('0x0000000000000000000000000000000000000002')
+    let agreementId = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
+    let allocationId = Address.fromString('0x0000000000000000000000000000000000000003')
+    let subgraphDeploymentId = Bytes.fromHexString('0x' + 'ab'.repeat(32))
+    let versionTerms = encodeVersionTerms(BigInt.fromI32(1000), BigInt.fromI32(50))
+
+    let event = createAcceptedEvent(
+      indexer,
+      payer,
+      agreementId,
+      allocationId,
+      subgraphDeploymentId,
+      1,
+      versionTerms,
+    )
+    handleIndexingAgreementAccepted(event)
+
+    // The SubgraphService event alone must establish the agreement's identity,
+    // so the indexer URL link doesn't depend on the RecurringCollector data
+    // source being configured correctly.
+    let id = agreementId.toHexString()
+    assert.fieldEquals('IndexingAgreement', id, 'indexer', indexer.toHexString())
+    assert.fieldEquals('IndexingAgreement', id, 'payer', payer.toHexString())
+    assert.fieldEquals('IndexingAgreement', id, 'indexerInfo', indexer.toHexString())
+  })
 })
 
 describe('handleIndexingAgreementCanceled', () => {

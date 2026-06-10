@@ -11,6 +11,12 @@ import { createOrLoadIndexingAgreement, tuplePrefixBytes } from './helpers'
 
 export function handleIndexingAgreementAccepted(event: AcceptedEvent): void {
   let agreement = createOrLoadIndexingAgreement(event.params.agreementId)
+  // The RecurringCollector's AgreementAccepted handler sets these too (same tx,
+  // same values); setting them here as well keeps the agreement's identity and
+  // its indexer link intact even if the collector data source is misconfigured.
+  agreement.indexer = event.params.indexer
+  agreement.indexerInfo = event.params.indexer
+  agreement.payer = event.params.payer
   agreement.allocationId = event.params.allocationId
   agreement.subgraphDeploymentId = event.params.subgraphDeploymentId
   agreement.acceptedAtTx = event.transaction.hash
