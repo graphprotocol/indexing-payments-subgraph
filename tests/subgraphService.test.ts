@@ -5,12 +5,14 @@ import {
   handleIndexingAgreementCanceled,
   handleIndexingAgreementUpdated,
   handleIndexingFeesCollectedV1,
+  handleServiceProviderRegistered,
 } from '../src/subgraphService'
 import {
   IndexingAgreementAccepted as AcceptedEvent,
   IndexingAgreementCanceled as CanceledEvent,
   IndexingAgreementUpdated as UpdatedEvent,
   IndexingFeesCollectedV1 as FeesCollectedEvent,
+  ServiceProviderRegistered as RegisteredEvent,
 } from '../generated/SubgraphService/SubgraphService'
 import { newMockEvent } from 'matchstick-as'
 
@@ -152,6 +154,31 @@ function encodeVersionTerms(tokensPerSecond: BigInt, tokensPerEntityPerSecond: B
   return ethereum.encode(ethereum.Value.fromTuple(tuple))!
 }
 
+// Build the registration payload the way the contract does:
+// abi.encode(string url, string geohash, address paymentsDestination).
+function encodeRegistrationData(url: string, geohash: string, paymentsDestination: Address): Bytes {
+  let tuple = new ethereum.Tuple()
+  tuple.push(ethereum.Value.fromString(url))
+  tuple.push(ethereum.Value.fromString(geohash))
+  tuple.push(ethereum.Value.fromAddress(paymentsDestination))
+  let encoded = ethereum.encode(ethereum.Value.fromTuple(tuple))!
+  // Strip the leading 32-byte tuple offset so the bytes match the on-chain
+  // abi.encode(...) (no outer offset); the handler re-adds it before decoding.
+  return Bytes.fromUint8Array(encoded.subarray(32))
+}
+
+function createRegisteredEvent(serviceProvider: Address, data: Bytes): RegisteredEvent {
+  let event = changetype<RegisteredEvent>(newMockEvent())
+
+  event.parameters = new Array()
+  event.parameters.push(
+    new ethereum.EventParam('serviceProvider', ethereum.Value.fromAddress(serviceProvider)),
+  )
+  event.parameters.push(new ethereum.EventParam('data', ethereum.Value.fromBytes(data)))
+
+  return event
+}
+
 describe('handleIndexingAgreementAccepted', () => {
   afterEach(() => {
     clearStore()
@@ -215,6 +242,34 @@ describe('handleIndexingAgreementAccepted', () => {
     )
     // State remains NotAccepted until RC handler fires
     assert.fieldEquals('IndexingAgreement', agreementId.toHexString(), 'state', 'NotAccepted')
+  })
+
+  test('populates indexer, payer, and the indexer link without the RC event', () => {
+    let indexer = Address.fromString('0x0000000000000000000000000000000000000001')
+    let payer = Address.fromString('0x0000000000000000000000000000000000000002')
+    let agreementId = Bytes.fromHexString('0x0102030405060708090a0b0c0d0e0f10')
+    let allocationId = Address.fromString('0x0000000000000000000000000000000000000003')
+    let subgraphDeploymentId = Bytes.fromHexString('0x' + 'ab'.repeat(32))
+    let versionTerms = encodeVersionTerms(BigInt.fromI32(1000), BigInt.fromI32(50))
+
+    let event = createAcceptedEvent(
+      indexer,
+      payer,
+      agreementId,
+      allocationId,
+      subgraphDeploymentId,
+      1,
+      versionTerms,
+    )
+    handleIndexingAgreementAccepted(event)
+
+    // The SubgraphService event alone must establish the agreement's identity,
+    // so the indexer URL link doesn't depend on the RecurringCollector data
+    // source being configured correctly.
+    let id = agreementId.toHexString()
+    assert.fieldEquals('IndexingAgreement', id, 'indexer', indexer.toHexString())
+    assert.fieldEquals('IndexingAgreement', id, 'payer', payer.toHexString())
+    assert.fieldEquals('IndexingAgreement', id, 'indexerInfo', indexer.toHexString())
   })
 })
 
@@ -419,5 +474,89 @@ describe('handleIndexingFeesCollectedV1', () => {
     assert.entityCount('IndexerDeploymentLatest', 1)
     assert.fieldEquals('IndexerDeploymentLatest', compositeId, 'entities', '8000')
     assert.fieldEquals('IndexerDeploymentLatest', compositeId, 'tokensCollected', '2000000')
+  })
+})
+
+describe('handleServiceProviderRegistered', () => {
+  afterEach(() => {
+    clearStore()
+  })
+
+  test('creates Indexer with the decoded url and registration provenance', () => {
+    let serviceProvider = Address.fromString('0x0000000000000000000000000000000000000001')
+    let paymentsDestination = Address.fromString('0x0000000000000000000000000000000000000004')
+    let url = 'https://indexer.example.com'
+    let data = encodeRegistrationData(url, 'u33dc0', paymentsDestination)
+
+    let event = createRegisteredEvent(serviceProvider, data)
+    event.block.number = BigInt.fromI32(500)
+    let txHash = Bytes.fromHexString('0x' + 'ee'.repeat(32)) as Bytes
+    event.transaction.hash = txHash
+    handleServiceProviderRegistered(event)
+
+    assert.entityCount('Indexer', 1)
+    assert.fieldEquals('Indexer', serviceProvider.toHexString(), 'url', url)
+    assert.fieldEquals('Indexer', serviceProvider.toHexString(), 'lastUpdatedAtBlock', '500')
+    assert.fieldEquals(
+      'Indexer',
+      serviceProvider.toHexString(),
+      'lastUpdatedAtTx',
+      txHash.toHexString(),
+    )
+  })
+
+  test('re-registration overwrites the url (last write wins)', () => {
+    let serviceProvider = Address.fromString('0x0000000000000000000000000000000000000001')
+    let paymentsDestination = Address.fromString('0x0000000000000000000000000000000000000004')
+
+    let first = createRegisteredEvent(
+      serviceProvider,
+      encodeRegistrationData('https://old.example.com', 'u33dc0', paymentsDestination),
+    )
+    first.block.number = BigInt.fromI32(500)
+    handleServiceProviderRegistered(first)
+
+    let second = createRegisteredEvent(
+      serviceProvider,
+      encodeRegistrationData('https://new.example.com', 'gbsuv7', paymentsDestination),
+    )
+    second.block.number = BigInt.fromI32(600)
+    handleServiceProviderRegistered(second)
+
+    assert.entityCount('Indexer', 1)
+    assert.fieldEquals('Indexer', serviceProvider.toHexString(), 'url', 'https://new.example.com')
+    assert.fieldEquals('Indexer', serviceProvider.toHexString(), 'lastUpdatedAtBlock', '600')
+  })
+
+  test('keeps two distinct indexers as separate records keyed by address', () => {
+    let firstProvider = Address.fromString('0x0000000000000000000000000000000000000001')
+    let secondProvider = Address.fromString('0x0000000000000000000000000000000000000002')
+    let paymentsDestination = Address.fromString('0x0000000000000000000000000000000000000004')
+
+    handleServiceProviderRegistered(
+      createRegisteredEvent(
+        firstProvider,
+        encodeRegistrationData('https://first.example.com', 'u33dc0', paymentsDestination),
+      ),
+    )
+    handleServiceProviderRegistered(
+      createRegisteredEvent(
+        secondProvider,
+        encodeRegistrationData('https://second.example.com', 'gbsuv7', paymentsDestination),
+      ),
+    )
+
+    assert.entityCount('Indexer', 2)
+    assert.fieldEquals('Indexer', firstProvider.toHexString(), 'url', 'https://first.example.com')
+    assert.fieldEquals('Indexer', secondProvider.toHexString(), 'url', 'https://second.example.com')
+  })
+
+  test('skips and creates no entity when the payload cannot be decoded', () => {
+    let serviceProvider = Address.fromString('0x0000000000000000000000000000000000000001')
+    // Garbage bytes that do not decode to (string,string,address).
+    let event = createRegisteredEvent(serviceProvider, Bytes.fromHexString('0xdeadbeef'))
+    handleServiceProviderRegistered(event)
+
+    assert.entityCount('Indexer', 0)
   })
 })

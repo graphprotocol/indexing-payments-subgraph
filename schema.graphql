@@ -14,6 +14,8 @@ type IndexingAgreement @entity(immutable: false) {
   payer: Bytes!
   "The indexer address"
   indexer: Bytes!
+  "Link to the indexer's registration record (URL etc.). Null until the indexer's ServiceProviderRegistered event has been indexed; resolves automatically once it is. Lets consumers read the indexer URL alongside the agreement in one query instead of cross-querying the network subgraph."
+  indexerInfo: Indexer
   "The allocation linked to this agreement"
   allocationId: Bytes!
   "The subgraph deployment ID"
@@ -80,6 +82,28 @@ type IndexerDeploymentLatest @entity(immutable: false) {
   poiBlockNumber: BigInt!
   blockNumber: BigInt!
   blockTimestamp: BigInt!
+}
+
+# Indexer (service provider) registration record, keyed by the indexer address.
+#
+# Sourced from the SubgraphService contract's ServiceProviderRegistered event,
+# whose payload decodes to (string url, string geohash, address paymentsDestination).
+# We store the url so consumers that hold an agreement's indexer address can read
+# the indexer's service URL from this same subgraph instead of cross-querying the
+# network subgraph.
+#
+# Mutable because an indexer can re-register at any time to change its URL; the
+# contract overwrites its stored record and re-emits the event, so we treat this
+# as last-write-wins.
+type Indexer @entity(immutable: false) {
+  "The indexer (service provider) address"
+  id: Bytes!
+  "Service URL from the latest ServiceProviderRegistered event"
+  url: String!
+  "Block number of the registration that last set this URL. Consumers polling for URL changes filter with `lastUpdatedAtBlock_gt` since their last seen block."
+  lastUpdatedAtBlock: BigInt!
+  "Transaction hash of the registration that last set this URL. Auditable link back to the on-chain register call."
+  lastUpdatedAtTx: Bytes!
 }
 
 # Latest stored offer per agreementId, keyed by bytes16 agreement ID.

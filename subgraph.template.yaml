@@ -19,6 +19,7 @@ dataSources:
         - IndexingAgreement
         - IndexingFeeCollection
         - IndexerDeploymentLatest
+        - Indexer
       abis:
         - name: SubgraphService
           file: ./abis/SubgraphService.json
@@ -31,6 +32,8 @@ dataSources:
           handler: handleIndexingAgreementUpdated
         - event: IndexingFeesCollectedV1(indexed address,indexed address,indexed bytes16,address,bytes32,uint256,uint256,uint256,bytes32,uint256,bytes)
           handler: handleIndexingFeesCollectedV1
+        - event: ServiceProviderRegistered(indexed address,bytes)
+          handler: handleServiceProviderRegistered
       file: ./src/subgraphService.ts
   - kind: ethereum
     name: RecurringCollector
