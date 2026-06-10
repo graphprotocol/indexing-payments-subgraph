@@ -4,8 +4,8 @@ import {
   IndexingAgreementCanceled as CanceledEvent,
   IndexingAgreementUpdated as UpdatedEvent,
   IndexingFeesCollectedV1 as FeesCollectedEvent,
+  ServiceProviderRegistered as RegisteredEvent,
 } from '../generated/SubgraphService/SubgraphService'
-import { ServiceProviderRegistered as RegisteredEvent } from '../generated/SubgraphServiceRegistration/SubgraphService'
 import { Indexer, IndexerDeploymentLatest, IndexingFeeCollection } from '../generated/schema'
 import { createOrLoadIndexingAgreement, tuplePrefixBytes } from './helpers'
 

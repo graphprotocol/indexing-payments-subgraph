@@ -2,6 +2,5 @@
   "network": "arbitrum-one",
   "subgraphServiceAddress": "0xb2Bb92d0DE618878E438b55D5846cfecD9301105",
   "recurringCollectorAddress": "0x0000000000000000000000000000000000000000",
-  "startBlock": 397492865,
-  "registrationStartBlock": 397492865
+  "startBlock": 397492865
 }
