@@ -2,5 +2,6 @@
   "network": "arbitrum-sepolia",
   "subgraphServiceAddress": "0xc24A3dAC5d06d771f657A48B20cE1a671B78f26b",
   "recurringCollectorAddress": "0x0b18befc60455121ad66ae6e4a647955fcde3900",
+  "recurringAgreementManagerAddress": "0x590DBBbdB1B6261e39BCC1fe88BffC21c847A68e",
   "startBlock": 201859812
 }

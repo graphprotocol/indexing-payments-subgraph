@@ -1,11 +1,62 @@
 import { Address, BigInt, ByteArray, Bytes } from '@graphprotocol/graph-ts'
-import { IndexingAgreement } from '../generated/schema'
+import { IndexingAgreement, RoleAssignment } from '../generated/schema'
 
 export const BIGINT_ZERO = BigInt.fromI32(0)
 // 32-byte zero sentinel. Bytes.empty() serializes with unpredictable padding on
 // non-nullable fields; a fixed-length value gives consumers something
 // deterministic to check against when no on-chain tx exists yet.
 export const BYTES32_ZERO = Bytes.fromHexString('0x' + '00'.repeat(32)) as Bytes
+
+// Role identifiers (keccak256 of the role names). The three DIPs roles drive the
+// indexer's trust checks; GOVERNOR/OPERATOR are indexed so RoleAdmin admins resolve to
+// holders. PAUSE administers none, omitted — its emergency revokes still emit RoleRevoked.
+export const AGREEMENT_MANAGER_ROLE = Bytes.fromHexString(
+  '0xeb1b3455811b30c0dd237887f6349f22cc96ee5963709d7fe356d9b0cefa6d22',
+) as Bytes
+export const COLLECTOR_ROLE = Bytes.fromHexString(
+  '0x14cf45180c3fcf249a5a305e9657ea05c14fd4f4e1800ee0216a8213091711d2',
+) as Bytes
+export const DATA_SERVICE_ROLE = Bytes.fromHexString(
+  '0xb24201cd204615da5223ccceee91f8943c451c6e49dd43dcd78e2cfe6ecd6be8',
+) as Bytes
+export const GOVERNOR_ROLE = Bytes.fromHexString(
+  '0x7935bd0ae54bc31f548c14dba4d37c5c64b3f8ca900cb468fb8abd54d5894f55',
+) as Bytes
+export const OPERATOR_ROLE = Bytes.fromHexString(
+  '0x97667070c54ef182b0f5858b034beac1b6f3089aa2d3188bb1e8929f4fa9b929',
+) as Bytes
+
+// True when the role is one the subgraph indexes: the three DIPs roles plus the
+// governor and operator roles that administer them.
+export function isIndexedRole(role: Bytes): boolean {
+  return (
+    role == AGREEMENT_MANAGER_ROLE ||
+    role == COLLECTOR_ROLE ||
+    role == DATA_SERVICE_ROLE ||
+    role == GOVERNOR_ROLE ||
+    role == OPERATOR_ROLE
+  )
+}
+
+export function createOrLoadRoleAssignment(role: Bytes, account: Bytes): RoleAssignment {
+  let id = role.concat(account)
+  let assignment = RoleAssignment.load(id)
+  if (assignment == null) {
+    assignment = new RoleAssignment(id)
+    assignment.role = role
+    assignment.account = account
+    assignment.active = false
+    assignment.grantedAtBlock = BIGINT_ZERO
+    assignment.grantedAtTimestamp = BIGINT_ZERO
+    assignment.grantedAtTx = BYTES32_ZERO
+    assignment.grantedBy = Address.zero() as Bytes
+    assignment.revokedAtBlock = BIGINT_ZERO
+    assignment.revokedAtTimestamp = BIGINT_ZERO
+    assignment.revokedAtTx = BYTES32_ZERO
+    assignment.revokedBy = Address.zero() as Bytes
+  }
+  return assignment
+}
 
 export function createOrLoadIndexingAgreement(agreementId: Bytes): IndexingAgreement {
   let agreement = IndexingAgreement.load(agreementId)

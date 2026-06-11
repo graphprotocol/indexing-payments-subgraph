@@ -70,3 +70,28 @@ dataSources:
         - event: OfferCancelled(indexed address,indexed bytes16,indexed bytes32)
           handler: handleOfferCancelled
       file: ./src/recurringCollector.ts
+  - kind: ethereum
+    name: RecurringAgreementManager
+    network: {{network}}
+    source:
+      address: "{{recurringAgreementManagerAddress}}"
+      abi: RecurringAgreementManager
+      startBlock: {{startBlock}}
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.7
+      language: wasm/assemblyscript
+      entities:
+        - RoleAssignment
+        - RoleAdmin
+      abis:
+        - name: RecurringAgreementManager
+          file: ./abis/RecurringAgreementManager.json
+      eventHandlers:
+        - event: RoleGranted(indexed bytes32,indexed address,indexed address)
+          handler: handleRoleGranted
+        - event: RoleRevoked(indexed bytes32,indexed address,indexed address)
+          handler: handleRoleRevoked
+        - event: RoleAdminChanged(indexed bytes32,indexed bytes32,indexed bytes32)
+          handler: handleRoleAdminChanged
+      file: ./src/recurringAgreementManager.ts
