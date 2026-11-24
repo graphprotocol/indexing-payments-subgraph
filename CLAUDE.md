@@ -23,5 +23,5 @@ npm run prepare:hardhat && npx graph codegen && npx graph build && npm run forma
 Per-network contract addresses and start blocks live in `config/`. The manifest is generated from `subgraph.template.yaml` using mustache:
 
 - `npm run prepare:hardhat` — local-network (SubgraphService at `0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9`)
-- `npm run prepare:arbitrum-one` — mainnet (address TBD)
-- `npm run prepare:arbitrum-sepolia` — testnet (address TBD)
+- `npm run prepare:arbitrum-one` — mainnet (SubgraphService at `0xb2Bb92d0DE618878E438b55D5846cfecD9301105`)
+- `npm run prepare:arbitrum-sepolia` — testnet (SubgraphService at `0xc24A3dAC5d06d771f657A48B20cE1a671B78f26b`)

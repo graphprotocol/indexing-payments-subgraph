@@ -1,7 +1,7 @@
 {
   "network": "arbitrum-one",
   "subgraphServiceAddress": "0xb2Bb92d0DE618878E438b55D5846cfecD9301105",
-  "recurringCollectorAddress": "0x0000000000000000000000000000000000000000",
-  "recurringAgreementManagerAddress": "0x0000000000000000000000000000000000000000",
+  "recurringCollectorAddress": "0xff0dc7310fbfbcc2524dae230cd4f34727eb84ee",
+  "recurringAgreementManagerAddress": "0x51f860b03dee6a6ea27392dcceccd908204149f2",
   "startBlock": 397492865
 }
