@@ -86,8 +86,8 @@ npx graph deploy --node http://localhost:8020 --ipfs http://localhost:5001 \
 | Network | Config | SubgraphService Address |
 |:--------|:-------|:------------------------|
 | Hardhat (local) | [`config/hardhat.json`](config/hardhat.json) | `0xCf7Ed3AccA5a467e9e704C703E8D87F634fB0Fc9` |
-| Arbitrum One | [`config/arbitrum-one.json`](config/arbitrum-one.json) | TBD |
-| Arbitrum Sepolia | [`config/arbitrum-sepolia.json`](config/arbitrum-sepolia.json) | TBD |
+| Arbitrum One | [`config/arbitrum-one.json`](config/arbitrum-one.json) | `0xb2Bb92d0DE618878E438b55D5846cfecD9301105` |
+| Arbitrum Sepolia | [`config/arbitrum-sepolia.json`](config/arbitrum-sepolia.json) | `0xc24A3dAC5d06d771f657A48B20cE1a671B78f26b` |
 
 </details>
 
